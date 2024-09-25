@@ -1,6 +1,4 @@
-# RNAseq_Analyser
-
-# Updated Code Documentation: Integration with Non-General Databases Using Multi-Liftoff
+# GENECorder
 
 ## Table of Contents
 
