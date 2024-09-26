@@ -14,7 +14,6 @@ dependencies:
   - biopython
   - emboss
   - pydeseq2
-  - tximport
   - matplotlib
   - pandas
   - seaborn
