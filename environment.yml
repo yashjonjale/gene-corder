@@ -1,4 +1,4 @@
-name: rnaseq_env
+name: gene_corder_env
 channels:
   - bioconda
   - conda-forge
@@ -20,3 +20,4 @@ dependencies:
   - seaborn
   - numpy
   - scikit-learn
+  - liftoff
