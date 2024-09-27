@@ -5,6 +5,7 @@ import os
 import sys
 import json
 import subprocess
+import requests
 
 # Load configuration
 CONFIG_FILE = 'config.json'
@@ -12,7 +13,12 @@ if os.path.exists(CONFIG_FILE):
     with open(CONFIG_FILE, 'r') as f:
         config = json.load(f)
 else:
-    config = {"organisms": {}, "default_organism": None}
+    config = {
+        "supported_organisms": {},
+        "objects": {}
+    }
+
+
 
 def save_config():
     with open(CONFIG_FILE, 'w') as f:
@@ -24,6 +30,30 @@ def list_organisms():
     organisms = ["Homo_sapiens", "Mus_musculus", "Arabidopsis_thaliana"]
     for org in organisms:
         print(f"- {org}")
+def get_available_species():
+    server = "https://rest.ensembl.org"
+    ext = "/info/species?content-type=application/json"
+
+    response = requests.get(server + ext)
+    if not response.ok:
+        response.raise_for_status()
+
+    data = response.json()
+    species_list = []
+    for species in data['species']:
+        species_info = {
+            'display_name': species['display_name'],       # e.g., Human
+            'scientific_name': species['scientific_name'], # e.g., Homo sapiens
+            'url_name': species['url_name'],               # e.g., Homo_sapiens
+            'production_name': species['name'],            # e.g., homo_sapiens
+            'assembly': species['assembly'],               # e.g., GRCh38
+            'taxonomy_id': species['taxonomy_id'],         # e.g., 9606
+        }
+        species_list.append(species_info)
+        # Update the supported_organisms in config
+        config['supported_organisms'][species_info['production_name']] = species_info
+    save_config()
+    return species_list
 
 def instantiate_organism(args):
     organism_name = args.organism

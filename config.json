@@ -1,4 +1,7 @@
 {
-    "organisms": {},
-    "default_organism": null
+    "supported_organisms": {
+        "kdjsj": {},
+        "skdm": {}
+    },
+    "objects": {}
 }
