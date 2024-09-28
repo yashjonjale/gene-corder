@@ -1,3 +1,6 @@
 {
-    "objects": {}
+    "objects": {
+        "obj_name" : obj,
+        
+    }
 }

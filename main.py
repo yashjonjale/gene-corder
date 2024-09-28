@@ -60,7 +60,7 @@ def instantiate_organism(args):
             #     "sra_codes": [{
             #         "sra_code": "SRR12345",
             #         "path": "path/to/quant1"
-                      "path_to_fastq": ,
+                    #   "path_to_fastq": ,
             #     }, {
             #         "sra_code": "SRR67890",
             #         "name": "Sample2"
@@ -170,10 +170,101 @@ def instantiate_organism(args):
 
 
 
+    obj = {
+        "name": name,
+        "desc": desc,
+        "organism": organism_name,
+        "paths": {
+            "transcriptome": transcript_path,
+            "genome": genome_path,
+            "gtf": gtf_path
+        },
+        "alt_paths": {
+            "transcriptome": None,
+            "genome": None,
+            "gtf": None
+        },
+        "quantifications": {
+            ### You have to add the quantifications here
+            # "quant1": {
+            #     "sra_codes": [{
+            #         "sra_code": "SRR12345",
+            #         "path": "path/to/quant1"
+                    #   "path_to_fastq": ,
+            #     }, {
+            #         "sra_code": "SRR67890",
+            #         "name": "Sample2"
+            #     }],
+            #     "type": "paired",
+            # }
+        },
+        "index_paths": {
+            "kallisto_index": None, #there
+            "t2g": None #there
+        }
+    }
+
+
 def quantize(args):
     sra_list = args.sra.split(',')
-    organism_name = args.organism
+    obj_name = args.obj
+    name = args.name
     print("Quantizing RNA-Seq data...")
+    
+    ##debug output
+    print(f"Name: {name}")
+    print(f"SRA List: {sra_list}")
+    print(f"Object Name: {obj_name}")
+
+    config = None
+    with open('config.json', 'r') as f:
+        config = json.load(f)
+
+    obj = config['objects'][obj_name]
+
+
+    ## You have to download the SRA files into the data folder and save the path in the obj quantification path entries
+
+    for sra in sra_list:
+        
+        #create path for the sra file, store it in ./data/<obj_name>/<name>/<sra_code>.sra
+
+        sra_path = f"./data/{obj_name}/{name}/{sra}.sra"
+
+        #create folder if it does not exist
+
+        os.makedirs(os.path.dirname(sra_path), exist_ok=True)
+
+        #download the sra file using subprocess and prefetch
+
+        prefetch_cmd = [
+            "prefetch",
+            sra,
+            "-O",
+            sra_path
+        ]
+
+        try:
+            subprocess.run(prefetch_cmd, check=True)
+            print(f"SRA file {sra} downloaded to {sra_path}")
+        except subprocess.CalledProcessError as e:
+            print(f"Error while downloading SRA file {sra}: {e}")
+            return
+
+        
+
+    
+
+
+
+
+
+
+
+
+
+
+
     # organism_name = config['default_organism']
     # if organism_name is None:
     #     print("Error: No organism instantiated. Please instantiate an organism first.")
@@ -302,6 +393,9 @@ def main():
     parser_quantize = subparsers.add_parser('quantize', help='Quantize RNA-Seq data')
     parser_quantize.add_argument('--sra', required=False, help='SRA accession code')
     parser_quantize.add_argument('--name', required=False, help='Name for this quantification')
+    parser_quantize.add_argument('--obj', required=False, help='Object name')
+
+
     parser_quantize.set_defaults(func=quantize)
 
     # # list_quant
