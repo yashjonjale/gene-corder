@@ -285,7 +285,51 @@ def quantize(args):
         
         ## you have to save the path to the fastq files in the obj quantification path entries
         ## make the new entry in the quantifications dictionary accordingly
+
+    ## Now, quantfying the fastq files using kallisto, different commands for paired and single end reads
+
+    ## you have to save the path to the quantification in the obj quantification path entries
+
+    ## run kallisto quantification for each fastq file
+
+    for sra in sra_list:
+        fastqdump_path = f"./data/{obj_name}/{name}/{sra}"
+        kallisto_index_path = obj["index_paths"]["kallisto_index"]
+        output_dir = f"./data/{obj_name}/{name}/{sra}_quant"
+        os.makedirs(output_dir, exist_ok=True)
+        if paired:
+            kallisto_cmd = [
+                "kallisto", "quant",
+                "-i", kallisto_index_path,
+                "-o", output_dir,
+                f"{fastqdump_path}/{sra}_1.fastq",
+                f"{fastqdump_path}/{sra}_2.fastq"
+            ]
+        else:
+            kallisto_cmd = [
+                "kallisto", "quant",
+                "-i", kallisto_index_path,
+                "-o", output_dir,
+                f"{fastqdump_path}/{sra}.fastq"
+            ]
         
+        try:
+            subprocess.run(kallisto_cmd, check=True)
+            print(f"Quantification completed for {sra}")
+        except subprocess.CalledProcessError as e:
+            print(f"Error while running kallisto quant for {sra}: {e}")
+            return
+
+        
+
+        ## save the path to the quantification in the obj quantification path entries
+        ## make the new entry in the quantifications dictionary accordingly
+
+        obj["quantifications"][name] = {
+            "sra_codes": sra_list,
+            "path": output_dir,
+            "type": "paired" if paired else "single"
+        }
 
 
 
@@ -403,6 +447,13 @@ def deseq_analyse(args):
     # print("DESeq2 analysis completed.")
 
 def main():
+
+    #check if config file exists
+    if not os.path.exists('config.json'):
+        with open('config.json', 'w') as f:
+            json.dump({"objects": {}}, f, indent=4)
+    
+
     parser = argparse.ArgumentParser(description='RNASeq Data Analyser')
     subparsers = parser.add_subparsers(dest='command')
 
