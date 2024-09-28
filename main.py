@@ -10,39 +10,6 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-def add_supported_organisms(config_json):
-    ##initialize the supported organisms dictionary
-    config_json['supported_organisms'] = {}
-    ### using requests connection to ensembl bacteria API and fetch the list of supported organisms
-
-    ## this list would contain much more data than just the name of the organism, but we will have to extract the name, common name, display names, other kind of names,
-
-    ## extract the specific data about names we need for different species
-
-def verify_config():
-    ##check if config file exists
-    if not os.path.exists('config.json'):
-        print("Config file not found. Creating a new one...")
-        config = {
-            "supported_organisms": None
-            # {
-            #     # "ecoli": {
-            #     #     "display_name": "Escherichia coli",
-            #     #     "scientific_name": "Escherichia coli",
-            #     #     "url_name": "Escherichia_coli",
-            #     #     "production_name": "escherichia_coli",
-            #     #     "assembly": "ASM584v2",
-            #     #     "taxonomy_id": 83333
-
-            #     # },
-            # }
-            ,
-            "objects": None,
-            "default_organism": None
-        }
-        add_supported_organisms(config)
-
-        save_config()
 
 
 def save_config(config_json):
@@ -50,41 +17,162 @@ def save_config(config_json):
     with open('config.json', 'w') as f:
         json.dump(config_json, f, indent=4)
 
-def list_organisms(args):
-    print("Supported organisms:")
-    # open the config file and print the keys of the supported organisms
-    with open('config.json', 'r') as f:
-        config = json.load(f)
-        for organism in config['supported_organisms']:
-            print(organism)
 
-
+def save_config(config):
+    with open('config.json', 'w') as f:
+        json.dump(config, f, indent=4)
 
 def instantiate_organism(args):
-    print(f"Instantiating Organisms ....")
-    # organism_name = args.organism
-    # if organism_name in config['organisms']:
-    #     print(f"Organism '{organism_name}' is already instantiated.")
-    #     return
-    # print(f"Instantiating organism '{organism_name}'...")
-    # # Fetch genome and annotation files from Ensembl
-    # # Placeholder for actual download code
-    # organism_data = {
-    #     "genome": f"data/{organism_name}_genome.fa",
-    #     "gtf": f"data/{organism_name}_annotations.gtf",
-    #     "transcriptome": f"data/{organism_name}_transcriptome.fa"
-    # }
-    # # Simulate downloading files
-    # os.makedirs('data', exist_ok=True)
-    # for key, path in organism_data.items():
-    #     with open(path, 'w') as f:
-    #         f.write(f">Dummy {key} data for {organism_name}\nATGC\n")
-    # config['organisms'][organism_name] = organism_data
-    # config['default_organism'] = organism_name
-    # save_config()
-    # print(f"Organism '{organism_name}' instantiated successfully.")
+    print(f"Instantiating Organism ....")
+    
+    organism_name = args.organism
+    name = args.name
+    desc = args.desc
+    transcript_path = args.transcriptome_path
+    genome_path = args.genome_path
+    gtf_path = args.gtf_path
+
+    print(f"Organism: {organism_name}")
+    print(f"Name: {name}")
+    print(f"Instantiating object {name} for organism {organism_name}...")
+    #debug output
+    print(f"Transcriptome Path: {transcript_path}")
+    print(f"Genome Path: {genome_path}")
+    print(f"GTF Path: {gtf_path}")
+
+    # Create object for config
+    obj = {
+        "name": name,
+        "desc": desc,
+        "organism": organism_name,
+        "paths": {
+            "transcriptome": transcript_path,
+            "genome": genome_path,
+            "gtf": gtf_path
+        },
+        "alt_paths": {
+            "transcriptome": None,
+            "genome": None,
+            "gtf": None
+        },
+        "quantifications": {
+            # "quant1": {
+            #     "sra_codes": [{
+            #         "sra_code": "SRR12345",
+            #         "path": "path/to/quant1"
+                      "path_to_fastq": ,
+            #     }, {
+            #         "sra_code": "SRR67890",
+            #         "name": "Sample2"
+            #     }],
+            #     "type": "paired",
+            # }
+        },
+        "index_paths": {
+            "kallisto_index": None,
+            "t2g": None
+        }
+    }
+
+    # Load the current config and append the new object
+    config = None
+    with open('config.json', 'r') as f:
+        config = json.load(f)
+        # config['objects'].append(obj)
+
+    # Directory to store outputs
+    output_dir = f"./data/{name}"
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Step 1: Index genome using kallisto index
+    kallisto_index_path = os.path.join(output_dir, f"{name}_kallisto.idx")
+    print(f"Indexing genome with kallisto...")
+    kallisto_cmd = [
+        "kallisto", "index",
+        "-i", kallisto_index_path,
+        transcript_path
+    ]
+    
+    try:
+        subprocess.run(kallisto_cmd, check=True)
+        print(f"Kallisto index created at {kallisto_index_path}")
+        obj["index_paths"]["kallisto_index"] = kallisto_index_path
+    except subprocess.CalledProcessError as e:
+        print(f"Error while running kallisto index: {e}")
+        return
+
+    # Step 2: Generate t2g.tsv using kb ref
+    t2g_path = os.path.join(output_dir, f"{name}_t2g.tsv")
+    print(f"Generating t2g.tsv using kb ref...")
+    kb_ref_cmd = [
+        "kb", "ref", "-i", kallisto_index_path,
+        "-g", gtf_path,
+        "-f1", transcript_path,
+        "-o", output_dir
+    ]
+    
+    try:
+        subprocess.run(kb_ref_cmd, check=True)
+        print(f"t2g.tsv generated at {t2g_path}")
+        obj["index_paths"]["t2g"] = t2g_path
+    except subprocess.CalledProcessError as e:
+        print(f"Error while running kb ref: {e}")
+        return
+
+    # Step 3: Save the updated config file with the new paths
+    config['objects'][name] = obj
+    save_config(config)
+    print(f"Updated config file with new paths for {name}.")
+    
+    print(f"Genome indexing and t2g generation complete. Ready for downstream quantification!")
+
+
+
+
+# def instantiate_organism(args):
+#     print(f"Instantiating Organisms ....")
+#     organism_name = args.organism
+#     name = args.name
+#     desc = args.desc
+#     transcript_path = args.transcriptome_path
+#     genome_path = args.genome_path
+#     gtf_path = args.gtf_path
+#     print(f"Organism: {organism_name}")
+#     print(f"Name: {name}")
+#     print(f"Instantiating object {name} for organism {organism_name}...")
+#     ##open the config file
+#     obj = {
+#         "name": name,
+#         "desc": desc,
+#         "organism": organism_name,
+#         "paths" : {
+#             "transcriptome": transcript_path,
+#             "genome": genome_path,
+#             "gtf": gtf_path
+#         },
+#         "alt_paths": {
+#             "transcriptome": None,
+#             "genome": None,
+#             "gtf": None
+#         },
+#         "quantifications": {},
+#     }   
+#     config = None
+#     with open('config.json', 'r') as f:
+#         config = json.load(f)
+#         config['objects'].append(obj)
+#     save_config(config)
+    
+#     print(f"Updated config file with object {name} for organism {organism_name}...")
+
+#     ## start indexing the genome for downstram quantification
+
+
+
 
 def quantize(args):
+    sra_list = args.sra.split(',')
+    organism_name = args.organism
     print("Quantizing RNA-Seq data...")
     # organism_name = config['default_organism']
     # if organism_name is None:
@@ -196,20 +284,25 @@ def main():
     parser = argparse.ArgumentParser(description='RNASeq Data Analyser')
     subparsers = parser.add_subparsers(dest='command')
 
-    # list
-    parser_list = subparsers.add_parser('list', help='List available organisms')
-    parser_list.set_defaults(func=list_organisms)
+    # list - removed
+    # parser_list = subparsers.add_parser('list', help='List available organisms')
+    # parser_list.set_defaults(func=list_organisms)
 
     # instantiate
-    parser_instantiate = subparsers.add_parser('instantiate', help='Instantiate an organism')
-    parser_instantiate.add_argument('--organism', required=False, help='Organism name')
+    parser_instantiate = subparsers.add_parser('instantiate', help='Instantiate an object for an organism')
+    parser_instantiate.add_argument('--organism', required=True, help='Organism name')
+    parser_instantiate.add_argument('--name', required=True, help='Name for this quantification')
+    parser_instantiate.add_argument('--desc', required=False, help='Description for this quantification')
+    parser_instantiate.add_argument('--transcriptome_path', required=True, help='path to transcriptome file in fasta format')
+    parser_instantiate.add_argument('--genome_path', required=True, help='path to genome file in fasta format')
+    parser_instantiate.add_argument('--gtf_path', required=True, help='path to the annotation file in gtf/gff format')
     parser_instantiate.set_defaults(func=instantiate_organism)
 
     # quantize
-    # parser_quantize = subparsers.add_parser('quantize', help='Quantize RNA-Seq data')
-    # parser_quantize.add_argument('--sra', required=False, help='SRA accession code')
-    # parser_quantize.add_argument('--name', required=False, help='Name for this quantification')
-    # parser_quantize.set_defaults(func=quantize)
+    parser_quantize = subparsers.add_parser('quantize', help='Quantize RNA-Seq data')
+    parser_quantize.add_argument('--sra', required=False, help='SRA accession code')
+    parser_quantize.add_argument('--name', required=False, help='Name for this quantification')
+    parser_quantize.set_defaults(func=quantize)
 
     # # list_quant
     # parser_list_quant = subparsers.add_parser('list_quant', help='List quantifications')
