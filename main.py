@@ -209,6 +209,7 @@ def quantize(args):
     sra_list = args.sra.split(',')
     obj_name = args.obj
     name = args.name
+    paired = args.paired
     print("Quantizing RNA-Seq data...")
     
     ##debug output
@@ -253,8 +254,38 @@ def quantize(args):
 
         
 
-    
+    ## once downloaded in the corresponding folder, you have to do fastqdump on the corresponding sra files using subprocess
 
+    for sra in sra_list:
+        sra_path = f"./data/{obj_name}/{name}/{sra}.sra"
+        fastqdump_path = f"./data/{obj_name}/{name}/{sra}"
+        
+        if paired:
+            fastqdump_cmd = [
+                "fastq-dump",
+                "--split-files",
+                "-O",
+                fastqdump_path,
+                sra_path
+            ]
+        else:
+            fastqdump_cmd = [
+                "fastq-dump",
+                "-O",
+                fastqdump_path,
+                sra_path
+            ]
+        
+        try:
+            subprocess.run(fastqdump_cmd, check=True)
+            print(f"Fastq files generated for {sra}")
+        except subprocess.CalledProcessError as e:
+            print(f"Error while running fastq-dump for {sra}: {e}")
+            return
+        
+        ## you have to save the path to the fastq files in the obj quantification path entries
+        ## make the new entry in the quantifications dictionary accordingly
+        
 
 
 
@@ -394,7 +425,7 @@ def main():
     parser_quantize.add_argument('--sra', required=False, help='SRA accession code')
     parser_quantize.add_argument('--name', required=False, help='Name for this quantification')
     parser_quantize.add_argument('--obj', required=False, help='Object name')
-
+    parser_quantize.add_argument('--paired', required=False, action='store_true', help='Paired-end reads')
 
     parser_quantize.set_defaults(func=quantize)
 
