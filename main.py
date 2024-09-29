@@ -73,11 +73,11 @@ def map_gene_ids_to_names(gtf_file, gene_counts_df):
 # df = pd.DataFrame(data)
 
 # Call the function and handle potential errors
-try:
-    updated_df = map_gene_ids_to_names(gtf_file, df)
-    print(updated_df)
-except (FileNotFoundError, ValueError, RuntimeError) as e:
-    print(f"[ERROR] {e}")
+# try:
+#     updated_df = map_gene_ids_to_names(gtf_file, df)
+#     print(updated_df)
+# except (FileNotFoundError, ValueError, RuntimeError) as e:
+#     print(f"[ERROR] {e}")
 
 
 
