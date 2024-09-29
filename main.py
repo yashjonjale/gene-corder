@@ -380,7 +380,7 @@ def quantize(args):
 
     try:
         # Load the transcript data
-        txi_data = txi.tximport(files, type="kallisto", tx2gene=gene_map, countsFromAbundance="scaledTPM")
+        txi_data = txi.tximport(files,"kallisto", gene_map,"scaledTPM")
         print("[DEBUG] Transcript data loaded successfully.")
     except Exception as e:
         print(f"[ERROR] Failed to load transcript data: {e}")
