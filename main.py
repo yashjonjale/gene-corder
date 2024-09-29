@@ -367,7 +367,7 @@ def quantize(args):
     # Importing and aggregating gene counts using tximport
     print("[DEBUG] Importing and aggregating gene counts using tximport.")
     try:
-        import txi  # Ensure that the 'txi' module is available
+        import pytximport as txi  # Ensure that the 'txi' module is available
     except ImportError:
         print("[ERROR] The 'txi' module is not installed or not found.")
         return
@@ -380,7 +380,7 @@ def quantize(args):
 
     try:
         # Load the transcript data
-        txi_data = txi.load_transcript_data(files, gene_map)
+        txi_data = txi.tximport(files, type="kallisto", tx2gene=gene_map, countsFromAbundance="scaledTPM")
         print("[DEBUG] Transcript data loaded successfully.")
     except Exception as e:
         print(f"[ERROR] Failed to load transcript data: {e}")
