@@ -7,7 +7,7 @@ import requests
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-import tximport as txi
+import pytximport as txi
 
 def save_config(config_json):
     ## Save the config file
