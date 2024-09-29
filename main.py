@@ -541,6 +541,7 @@ def quantize(args):
                counts_column = "est_counts",
                length_column = "eff_length", abundance_column = "tpm")
         result.X = result.X.round().astype(int)
+        # result.obs = pd.DataFrame(index=result.obs_names)
         result.obs["type"] = "type-none"
         result.obs["replicate"] = "replicate-none"
 
@@ -549,34 +550,85 @@ def quantize(args):
         return
 
     # Extract the gene-level counts matrix and gene names
+    # print(f"[DEBUG] Extracting gene-level counts matrix and gene names")
+    # gtf = pr.read_gtf("/data1/yashjonjale/igem_stuff/ehux_study/sra_data/working_folder/kb_ref_out/Emiliania_huxleyi.Emiliana_huxleyi_CCMP1516_main_genome_assembly_v1.0.59.gtf")
+    # gtf_gene = gtf.df[gtf.df["Feature"] == "gene"][["gene_id", "gene_name"]].drop_duplicates()
+    # gtf_gene["gene_name"].fillna(gtf_gene["gene_id"], inplace=True)
+    # gtf_gene.set_index("gene_id", inplace=True)
+    # common_genes = result.var.index.intersection(gtf_gene.index)
+
+
+    # result = result[:, result.var.index.isin(common_genes)]
+    # # result.obs = None
+    # result.obs = pd.DataFrame(index=result.obs_names)
+
+    # # Save the gene-level counts matrix as a CSV file
+    # print(f"[DEBUG] Saving gene-level counts matrix as a CSV file")
+    # gene_count_csv = f"./data/{obj_name}/{name}/{name}_gene_counts.csv"
+    # result.X = result.X.astype(int)
+    # result.var["gene_name"] = gtf_gene.loc[result.var.index, "gene_name"]
+    # result.var.set_index("gene_name", inplace=True)
+    # result.X = result.X.T
+    # result.X.to_csv(gene_count_csv)
+    # print(f"[DEBUG] Gene counts saved to {gene_count_csv}")
+
+    # # Update the config with the path to gene count
+    # obj["quantifications"][name]["counts_path"] = gene_count_csv
+
+    # print("Saving the new paths in config.json\n")    
+    # config['objects'][obj_name] = obj
+    # save_config(config)
+    # print(f"[DEBUG] Quantification '{name}' completed and saved to config.")
+
+
+
+    # print("[DEBUG] quantize function completed successfully.")
+
     print(f"[DEBUG] Extracting gene-level counts matrix and gene names")
-    gtf = pr.read_gtf("/data1/yashjonjale/igem_stuff/ehux_study/sra_data/working_folder/kb_ref_out/Emiliania_huxleyi.Emiliana_huxleyi_CCMP1516_main_genome_assembly_v1.0.59.gtf")
-    gtf_gene = gtf.df[gtf.df["Feature"] == "gene"][["gene_id", "gene_name"]].drop_duplicates()
-    gtf_gene["gene_name"].fillna(gtf_gene["gene_id"], inplace=True)
-    gtf_gene.set_index("gene_id", inplace=True)
-    common_genes = result.var.index.intersection(gtf_gene.index)
+    try:
+        # Load GTF and extract gene names
+        gtf = pr.read_gtf(gtf_path)
+        gtf_gene = gtf.df[gtf.df["Feature"] == "gene"][["gene_id", "gene_name"]].drop_duplicates()
+        gtf_gene["gene_name"].fillna(gtf_gene["gene_id"], inplace=True)
+        gtf_gene.set_index("gene_id", inplace=True)
 
+        # Find common genes between result and gtf_gene
+        common_genes = result.var.index.intersection(gtf_gene.index)
 
-    result = result[:, result.var.index.isin(common_genes)]
-    result.obs = None
+        # Subset to common genes
+        result = result[:, result.var.index.isin(common_genes)]
 
-    # Save the gene-level counts matrix as a CSV file
-    print(f"[DEBUG] Saving gene-level counts matrix as a CSV file")
-    gene_count_csv = f"./data/{obj_name}/{name}/{name}_gene_counts.csv"
-    result.X = result.X.astype(int)
-    result.var["gene_name"] = gtf_gene.loc[result.var.index, "gene_name"]
-    result.var.set_index("gene_name", inplace=True)
-    result.X = result.X.T
-    result.X.to_csv(gene_count_csv)
-    print(f"[DEBUG] Gene counts saved to {gene_count_csv}")
+        # Add gene names
+        result.var["gene_name"] = gtf_gene.loc[result.var.index, "gene_name"]
+        result.var.set_index("gene_name", inplace=True)
 
-    # Update the config with the path to gene count
-    obj["quantifications"][name]["counts_path"] = gene_count_csv
+    except Exception as e:
+        print(f"[ERROR] Error in extracting gene names: {e}")
+        return
 
-    print("Saving the new paths in config.json\n")    
-    config['objects'][obj_name] = obj
-    save_config(config)
-    print(f"[DEBUG] Quantification '{name}' completed and saved to config.")
+    # Step 4: Save gene-level counts matrix to CSV
+    try:
+        print(f"[DEBUG] Saving gene-level counts matrix as a CSV file")
+        gene_count_csv = os.path.join(f"./data/{obj_name}/{name}", f"{name}_gene_counts.csv")
+
+        os.makedirs(os.path.dirname(gene_count_csv), exist_ok=True)
+
+        result.X = result.X.astype(int).T  # Transpose to make genes as columns
+        result.X.to_csv(gene_count_csv)
+
+        print(f"[DEBUG] Gene counts saved to {gene_count_csv}")
+
+        # Update config with the path to the gene counts
+        obj["quantifications"][name]["counts_path"] = gene_count_csv
+
+        print(f"Saving the new paths in config.json")
+        config['objects'][obj_name] = obj
+        save_config(config)
+        print(f"[DEBUG] Quantification '{name}' completed and saved to config.")
+
+    except Exception as e:
+        print(f"[ERROR] Error while saving gene-level counts matrix: {e}")
+        return
 
     print("[DEBUG] quantize function completed successfully.")
 
