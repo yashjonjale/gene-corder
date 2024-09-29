@@ -329,6 +329,9 @@ def quantize(args):
             kallisto_cmd = [
                 "kallisto", "quant",
                 "-i", kallisto_index_path,
+                "--single",
+                "-l", "200",
+                "-s", "20",
                 "-o", output_dir,
                 f"{fastqdump_path}/{sra}.fastq"
             ]
