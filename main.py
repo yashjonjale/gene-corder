@@ -294,7 +294,7 @@ def quantize(args):
         
         try:
             # Uncomment the next line to enable fastq-dump execution
-            # subprocess.run(fastqdump_cmd, check=True)
+            subprocess.run(fastqdump_cmd, check=True)
             print(f"Fastq files generated for {sra}")
         except subprocess.CalledProcessError as e:
             print(f"Error while running fastq-dump for {sra}: {e}")
@@ -321,6 +321,7 @@ def quantize(args):
                 "kallisto", "quant",
                 "-i", kallisto_index_path,
                 "-o", output_dir,
+                "-t", "24",
                 f"{fastqdump_path}/{sra}_1.fastq",
                 f"{fastqdump_path}/{sra}_2.fastq"
             ]
@@ -332,6 +333,7 @@ def quantize(args):
                 "--single",
                 "-l", "200",
                 "-s", "20",
+                "-t", "24",
                 "-o", output_dir,
                 f"{fastqdump_path}/{sra}.fastq"
             ]
