@@ -215,19 +215,25 @@ def quantize(args):
     if name not in obj["quantifications"]:
         print(f"[DEBUG] Creating new quantification entry '{name}'.")
         obj["quantifications"][name] = {
-            "paths": [],
-            "types": []
+            "sra":{},
+            "counts_path": None,
         }
     else:
         print(f"[DEBUG] Quantification entry '{name}' already exists.")
-
+        return
+    
+    sra_dir = f"./data/{obj_name}/{name}/"
+    os.makedirs(sra_dir, exist_ok=True)
     ## Download SRA files
     for sra in sra_list:
         print(f"[DEBUG] Processing SRA accession: {sra}")
         # Create path for the SRA file
-        sra_dir = f"./data/{obj_name}/{name}/{sra}/"
-        os.makedirs(sra_dir, exist_ok=True)
-        sra_path = os.path.join(sra_dir, f"{sra}.sra")
+        obj["quantifications"][name]["sra"][sra] = {
+            "path": os.path.join(sra_dir, f"{sra}/{sra}.sra"),
+            "fastq_dir": os.path.join(sra_dir, f"{sra}/"),
+            "paired": paired
+        }
+        sra_path = os.path.join(sra_dir, f"{sra}/{sra}.sra")
         print(f"[DEBUG] SRA file path: {sra_path}")
 
         download = False  # Flag to determine if download is required
@@ -309,7 +315,7 @@ def quantize(args):
         os.makedirs(output_dir, exist_ok=True)
         print(f"[DEBUG] Kallisto index path: {kallisto_index_path}")
         print(f"[DEBUG] Kallisto output directory: {output_dir}")
-
+        obj["quantifications"][name]["sra"][sra]["quant_path"] = output_dir
         if paired:
             kallisto_cmd = [
                 "kallisto", "quant",
@@ -345,6 +351,15 @@ def quantize(args):
         abundances_tsv_path = os.path.abspath(abundances_tsv_path)
         abundances_tsv_paths.append(abundances_tsv_path)
         print(f"[DEBUG] Abundance TSV path: {abundances_tsv_path}")
+
+
+    # update the obj with the new paths
+    print("Saving the new paths in config.json\n")
+    print(config['objects'][obj_name])
+    config['objects'][obj_name] = obj
+    save_config(config)
+
+
 
     # Importing and aggregating gene counts using tximport
     print("[DEBUG] Importing and aggregating gene counts using tximport.")
