@@ -406,14 +406,14 @@ def quantize(args):
             "pysradb",
             "metadata",
             "--detailed",
-            sra,
-            ">",
-            meta_path
+            sra
         ]
 
         print(f"[DEBUG] Running metadata command: {' '.join(meta_cmd)}")
         try:
-            subprocess.run(meta_cmd, check=True)
+            # subprocess.run(meta_cmd, check=True)
+            with open(meta_path, "w") as meta_file:
+                subprocess.run(meta_cmd, check=True, stdout=meta_path)
             print(f"Metadata file {sra} downloaded to {sra_dir}")
             obj["quantifications"][name]["sra"][sra]["meta_path"] = meta_path
         except subprocess.CalledProcessError as e:
