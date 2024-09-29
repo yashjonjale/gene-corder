@@ -413,7 +413,7 @@ def quantize(args):
         try:
             # subprocess.run(meta_cmd, check=True)
             with open(meta_path, "w") as meta_file:
-                subprocess.run(meta_cmd, check=True, stdout=meta_path)
+                subprocess.run(meta_cmd, check=True, stdout=meta_file)
             print(f"Metadata file {sra} downloaded to {sra_dir}")
             obj["quantifications"][name]["sra"][sra]["meta_path"] = meta_path
         except subprocess.CalledProcessError as e:
