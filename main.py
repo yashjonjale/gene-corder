@@ -606,15 +606,41 @@ def quantize(args):
         print(f"[ERROR] Error in extracting gene names: {e}")
         return
 
-    # Step 4: Save gene-level counts matrix to CSV
+    # # Step 4: Save gene-level counts matrix to CSV
+    # try:
+    #     print(f"[DEBUG] Saving gene-level counts matrix as a CSV file")
+    #     gene_count_csv = os.path.join(f"./data/{obj_name}/{name}", f"{name}_gene_counts.csv")
+
+    #     os.makedirs(os.path.dirname(gene_count_csv), exist_ok=True)
+
+    #     result.X = result.X.astype(int).T  # Transpose to make genes as columns
+    #     result.X.to_csv(gene_count_csv)
+
+    #     print(f"[DEBUG] Gene counts saved to {gene_count_csv}")
+
+    #     # Update config with the path to the gene counts
+    #     obj["quantifications"][name]["counts_path"] = gene_count_csv
+
+    #     print(f"Saving the new paths in config.json")
+    #     config['objects'][obj_name] = obj
+    #     save_config(config)
+    #     print(f"[DEBUG] Quantification '{name}' completed and saved to config.")
+
+    # except Exception as e:
+    #     print(f"[ERROR] Error while saving gene-level counts matrix: {e}")
+    #     return
+
+
     try:
         print(f"[DEBUG] Saving gene-level counts matrix as a CSV file")
         gene_count_csv = os.path.join(f"./data/{obj_name}/{name}", f"{name}_gene_counts.csv")
-
         os.makedirs(os.path.dirname(gene_count_csv), exist_ok=True)
 
-        result.X = result.X.astype(int).T  # Transpose to make genes as columns
-        result.X.to_csv(gene_count_csv)
+        # Convert the numpy array result.X to a pandas DataFrame
+        gene_counts_df = pd.DataFrame(result.X, index=result.obs_names, columns=result.var_names)
+
+        # Transpose to make genes as columns
+        gene_counts_df.T.to_csv(gene_count_csv)
 
         print(f"[DEBUG] Gene counts saved to {gene_count_csv}")
 
@@ -629,7 +655,6 @@ def quantize(args):
     except Exception as e:
         print(f"[ERROR] Error while saving gene-level counts matrix: {e}")
         return
-
     print("[DEBUG] quantize function completed successfully.")
 
 def list_quantifications(args):
