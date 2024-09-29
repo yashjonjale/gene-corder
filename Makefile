@@ -1,6 +1,6 @@
 .PHONY: clean all setup
 
-ENV_NAME = "gc"
+ENV_NAME = "gene-corder"
 all: setup
 	@echo "Building..."
 
