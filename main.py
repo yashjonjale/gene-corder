@@ -212,15 +212,15 @@ def quantize(args):
     print(f"[DEBUG] Loaded object '{obj_name}' from config.")
 
     ## Initialize quantification entry if not present
-    if name not in obj["quantifications"]:
-        print(f"[DEBUG] Creating new quantification entry '{name}'.")
-        obj["quantifications"][name] = {
-            "sra":{},
-            "counts_path": None,
-        }
-    else:
-        print(f"[DEBUG] Quantification entry '{name}' already exists.")
-        return
+    # if name not in obj["quantifications"]:
+    print(f"[DEBUG] Creating new quantification entry '{name}'.")
+    obj["quantifications"][name] = {
+        "sra":{},
+        "counts_path": None,
+    }
+    # else:
+    #     print(f"[DEBUG] Quantification entry '{name}' already exists.")
+    #     return
     
     sra_dir = f"./data/{obj_name}/{name}/"
     os.makedirs(sra_dir, exist_ok=True)
