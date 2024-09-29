@@ -7,7 +7,143 @@ import requests
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-import pytximport as txi
+from pytximport import tximport
+import pyranges as pr
+
+
+import pandas as pd
+import pyranges as pr
+import os
+
+def map_gene_ids_to_names(gtf_file, gene_counts_df):
+    """
+    Maps gene IDs to gene names using a GTF file and updates a gene counts DataFrame.
+
+    Args:
+        gtf_file (str): Path to the GTF file.
+        gene_counts_df (pd.DataFrame): A DataFrame with gene IDs in the first column.
+
+    Returns:
+        pd.DataFrame: Updated DataFrame with gene names mapped to gene IDs.
+    """
+
+    # Step 1: Check if the GTF file exists
+    if not os.path.exists(gtf_file):
+        raise FileNotFoundError(f"GTF file '{gtf_file}' not found.")
+    
+    # Step 2: Load the GTF file into a pyranges object
+    try:
+        gtf = pr.read_gtf(gtf_file)
+    except Exception as e:
+        raise RuntimeError(f"Error loading GTF file: {e}")
+    
+    # Step 3: Extract gene_id and gene_name from GTF
+    try:
+        gtf_genes = gtf[gtf.Feature == 'gene']
+        gtf_genes_df = gtf_genes.df[['gene_id', 'gene_name']].drop_duplicates()
+
+        # Step 4: Create a dictionary to map gene_id to gene_name
+        gene_id_to_name = dict(zip(gtf_genes_df['gene_id'], gtf_genes_df['gene_name']))
+
+    except KeyError as e:
+        raise ValueError(f"Required columns not found in the GTF file: {e}")
+
+    # Step 5: Check if gene_id column exists in gene_counts_df
+    if 'gene_id' not in gene_counts_df.columns:
+        raise ValueError("The 'gene_id' column is missing from the gene counts dataframe.")
+    
+    # Step 6: Map gene_id to gene_name in the gene counts DataFrame
+    try:
+        gene_counts_df['gene_name'] = gene_counts_df['gene_id'].map(gene_id_to_name)
+    except Exception as e:
+        raise RuntimeError(f"Error mapping gene IDs to gene names: {e}")
+    
+    # Step 7: Return the updated dataframe
+    return gene_counts_df
+
+# # Example usage:
+
+# gtf_file = "your_file.gtf"  # Replace with the actual path to your GTF file
+
+# # Sample RNA-seq gene counts dataframe
+# data = {
+#     "gene_id": ["EMIHUDRAFT_100000", "EMIHUDRAFT_100004", "EMIHUDRAFT_100007", "EMIHUDRAFT_100011", "EMIHUDRAFT_100015"],
+#     "sample1": [246, 457, 152, 40.5625, 60.7854]
+# }
+# df = pd.DataFrame(data)
+
+# Call the function and handle potential errors
+try:
+    updated_df = map_gene_ids_to_names(gtf_file, df)
+    print(updated_df)
+except (FileNotFoundError, ValueError, RuntimeError) as e:
+    print(f"[ERROR] {e}")
+
+
+
+
+
+def process_gene_counts(obj, abundances_tsv_paths, obj_name, name):
+    # Load paths from the object
+    t2g_path = obj["index_paths"]["t2g"]
+    gtf_path = obj["paths"]["gtf"]
+    print(f"[DEBUG] t2g path: {t2g_path}")
+
+    # Load the t2g (transcript-to-gene) map
+    t2g_df = pd.read_csv(t2g_path, sep="\t", header=None,
+                         names=["transcript_id", "gene_id", "gene_name", "transcript_name", "chrom", "start", "end", "strand"])
+    t2g = t2g_df[["transcript_id", "gene_id"]]
+
+    files = abundances_tsv_paths
+    print(f"[DEBUG] Files to import: {files}")
+    print(f"[DEBUG] Gene map path: {t2g_path}")
+
+    try:
+        # Use pytximport to aggregate transcript-level data to gene-level
+        result = tximport(files=files, transcript_gene_map=t2g, type='kallisto')
+        result = result.round().astype(int)  # Round counts and convert to integer
+
+    except Exception as e:
+        print(f"[ERROR] Tximport Failure: {e}")
+        return
+
+    # Extract the gene-level counts matrix and gene names
+    print(f"[DEBUG] Extracting gene-level counts matrix and gene names")
+    
+    # Step 1: Load GTF using pyranges
+    gtf = pr.read_gtf(gtf_path)
+    
+    # Step 2: Extract relevant gene_id and gene_name columns from the GTF file
+    gtf_gene = gtf.df[gtf.df["Feature"] == "gene"][["gene_id", "gene_name"]].drop_duplicates()
+    
+    # Step 3: Handle missing gene names by filling them with the gene_id
+    gtf_gene["gene_name"].fillna(gtf_gene["gene_id"], inplace=True)
+    
+    # Step 4: Set gene_id as the index for easy lookups
+    gtf_gene.set_index("gene_id", inplace=True)
+    
+    # Step 5: Find common genes between tximport result and GTF file
+    common_genes = result.index.intersection(gtf_gene.index)
+
+    # Step 6: Filter result for common genes
+    result = result.loc[common_genes]
+
+    # Step 7: Update gene names based on the GTF file
+    result.index = gtf_gene.loc[common_genes, "gene_name"]
+
+    # Step 8: Save the gene-level counts matrix as a CSV file
+    print(f"[DEBUG] Saving gene-level counts matrix as a CSV file")
+    
+    # Create directories if they don't exist
+    output_dir = f"./data/{obj_name}/{name}"
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Save the gene counts matrix
+    gene_count_csv = os.path.join(output_dir, f"{name}_gene_counts.csv")
+    result.to_csv(gene_count_csv)
+
+    print(f"[DEBUG] Gene counts saved to {gene_count_csv}")
+
 
 def save_config(config_json):
     ## Save the config file
@@ -263,8 +399,30 @@ def quantize(args):
                 return
         else:
             print(f"[DEBUG] Skipping download for {sra} as it already exists.")
+        
+        #now download the metadata.tsv for the SRA
+        meta_path = os.path.join(sra_dir, f"{sra}/{sra}_metadata.tsv")
+        meta_cmd = [
+            "pysradb",
+            "metadata",
+            "--detailed",
+            sra,
+            ">",
+            meta_path
+        ]
+
+        print(f"[DEBUG] Running metadata command: {' '.join(meta_cmd)}")
+        try:
+            subprocess.run(meta_cmd, check=True)
+            print(f"Metadata file {sra} downloaded to {sra_dir}")
+            obj["quantifications"][name]["sra"][sra]["meta_path"] = meta_path
+        except subprocess.CalledProcessError as e:
+            print(f"Error while downloading Metadata file {sra}: {e}")
+            return
 
     print(f"SRA prefetch Done for {sra_list}")
+
+    
 
     ## Once downloaded, perform fastq-dump on the corresponding SRA files
     for sra in sra_list:
@@ -363,63 +521,57 @@ def quantize(args):
     save_config(config)
 
 
+    t2g_path = obj["index_paths"]["t2g"]
+    gtf_path = obj["paths"]["gtf"]
+    print(f"[DEBUG] t2g path: {t2g_path}")
+    
+    #load the t2g file as a dataframe
+    t2g_df = pd.read_csv(t2g_path, sep="\t", header=None,names=["transcript_id", "gene_id", "gene_name", "transcript_name", "chrom", "start", "end", "strand"])
+    t2g = t2g_df[["transcript_id", "gene_id"]]
 
-    # Importing and aggregating gene counts using tximport
-    print("[DEBUG] Importing and aggregating gene counts using tximport.")
-    try:
-        import pytximport as txi  # Ensure that the 'txi' module is available
-    except ImportError:
-        print("[ERROR] The 'txi' module is not installed or not found.")
-        return
+
 
     files = abundances_tsv_paths
-    gene_map = obj["index_paths"]["t2g"]  # A file mapping transcripts to genes
-
     print(f"[DEBUG] Files to import: {files}")
-    print(f"[DEBUG] Gene map path: {gene_map}")
+    print(f"[DEBUG] Gene map path: {t2g_path}")
 
     try:
-        # Load the transcript data
-        txi_data = txi.tximport(files,"kallisto", gene_map,"scaledTPM")
-        print("[DEBUG] Transcript data loaded successfully.")
+        result = tximport(file_paths=files, data_type='kallisto', transcript_gene_map=t2g,
+               id_column = "target_id",
+               counts_column = "est_counts",
+               length_column = "eff_length", abundance_column = "tpm")
+        result.X = result.X.round().astype(int)
+        result.obs["type"] = "type-none"
+        result.obs["replicate"] = "replicate-none"
+
     except Exception as e:
-        print(f"[ERROR] Failed to load transcript data: {e}")
+        print(f"[ERROR] Tximport Failure: {e}")
         return
 
     # Extract the gene-level counts matrix and gene names
-    gene_counts = txi_data.get('counts')
-    gene_names = txi_data.get('gene_names')
+    print(f"[DEBUG] Extracting gene-level counts matrix and gene names")
+    gtf = pr.read_gtf("/data1/yashjonjale/igem_stuff/ehux_study/sra_data/working_folder/kb_ref_out/Emiliania_huxleyi.Emiliana_huxleyi_CCMP1516_main_genome_assembly_v1.0.59.gtf")
+    gtf_gene = gtf.df[gtf.df["Feature"] == "gene"][["gene_id", "gene_name"]].drop_duplicates()
+    gtf_gene["gene_name"].fillna(gtf_gene["gene_id"], inplace=True)
+    gtf_gene.set_index("gene_id", inplace=True)
+    common_genes = result.var.index.intersection(gtf_gene.index)
 
-    if gene_counts is None or gene_names is None:
-        print("[ERROR] 'counts' or 'gene_names' not found in txi_data.")
-        return
 
-    print("[DEBUG] Gene counts and gene names extracted.")
+    result = result[:, result.var.index.isin(common_genes)]
+    result.obs = None
 
-    # Convert the counts matrix to a DataFrame
-    print("[DEBUG] Converting gene counts to DataFrame.")
-    df_gene_counts = pd.DataFrame(gene_counts, index=gene_names, columns=sra_list)
-    print("[DEBUG] DataFrame created successfully.")
-
-    # Reset the index to make gene names a column instead of the index
-    df_gene_counts.reset_index(inplace=True)
-
-    # Rename the first column as 'Gene'
-    df_gene_counts.rename(columns={'index': 'Gene'}, inplace=True)
-    print("[DEBUG] Renamed the first column to 'Gene'.")
-
-    # Define the gene count directory
-    gene_count_dir = f"./data/{obj_name}/{name}/gene_count/"
-    os.makedirs(gene_count_dir, exist_ok=True)
-    print(f"[DEBUG] Created gene count directory at {gene_count_dir}")
-
-    # Save the DataFrame as a CSV file
-    gene_count_csv = os.path.join(gene_count_dir, "gene_count.csv")
-    df_gene_counts.to_csv(gene_count_csv, index=False)
+    # Save the gene-level counts matrix as a CSV file
+    print(f"[DEBUG] Saving gene-level counts matrix as a CSV file")
+    gene_count_csv = f"./data/{obj_name}/{name}/{name}_gene_counts.csv"
+    result.X = result.X.astype(int)
+    result.var["gene_name"] = gtf_gene.loc[result.var.index, "gene_name"]
+    result.var.set_index("gene_name", inplace=True)
+    result.X = result.X.T
+    result.X.to_csv(gene_count_csv)
     print(f"[DEBUG] Gene counts saved to {gene_count_csv}")
 
     # Update the config with the path to gene count
-    obj["quantifications"][name]["path_to_gene_count"] = gene_count_csv
+    obj["quantifications"][name]["counts_path"] = gene_count_csv
 
     print("Saving the new paths in config.json\n")    
     config['objects'][obj_name] = obj
@@ -427,6 +579,157 @@ def quantize(args):
     print(f"[DEBUG] Quantification '{name}' completed and saved to config.")
 
     print("[DEBUG] quantize function completed successfully.")
+
+def list_quantifications(args):
+    obj_name = args.obj
+    print(f"Listing quantifications for object '{obj_name}'...")
+    config = None
+    print("[DEBUG] Loading config.json for listing quantifications.")
+    try:
+        with open('config.json', 'r') as f:
+            config = json.load(f)
+            print(f"[DEBUG] Available objects in config: {list(config['objects'].keys())}")
+    except FileNotFoundError:
+        print("[ERROR] config.json not found. Please instantiate an organism first.")
+        return
+    
+    if obj_name not in config['objects']:
+        print(f"[ERROR] Object '{obj_name}' not found in config.")
+        return
+    
+    obj = config['objects'][obj_name]
+    print(f"[DEBUG] Loaded object '{obj_name}' from config.")
+
+    if not obj["quantifications"]:
+        print(f"[DEBUG] No quantifications found for object '{obj_name}'.")
+        return
+    
+    print(f"Quantifications for object '{obj_name}':")
+    for quant_name, quant in obj["quantifications"].items():
+        print(f"- {quant_name}:")
+        for sra, sra_data in quant["sra"].items():
+            print(f"  - {sra}:")
+            print(f"    - Path: {sra_data['path']}")
+            print(f"    - Paired: {sra_data['paired']}")
+            print(f"    - Fastq Dir: {sra_data['fastq_dir']}")
+            print(f"    - Quant Path: {sra_data['quant_path']}")
+            print(f"    - Metadata Path: {sra_data['meta_path']}")
+        print(f"  - Counts Path: {quant['counts_path']}")
+    print("[DEBUG] list_quantifications function completed successfully.")
+
+def plot_gene_abundances(args):
+    obj_name = args.obj
+    quant_name = args.quantification_name
+    target_gene = args.gene
+    
+    ##debug output
+    print(f"Object Name: {obj_name}")
+    
+    config = None
+    with open('config.json', 'r') as f:
+        config = json.load(f)
+
+    obj = config['objects'][obj_name]
+    
+    # "path_to_gene_count"
+    path_to_gene_count = obj["quantifications"][quant_name]["path_to_gene_count"]
+
+    df = pd.read_csv(path_to_gene_count)
+    array_with_genes = df.values
+    
+    # Fetch the row where the first column matches the target string
+    gene_row = array_with_genes[array_with_genes[:, 0] == target_gene]
+    values = gene_row.iloc[0, 1:].values
+    labels = df.columns[1:]
+
+    plt.bar(labels, values)
+
+def plot_gene_abundances(args):
+    obj_name = args.obj
+    quant_name = args.quantification_name
+    target_gene = args.gene
+    
+    # Debug output
+    print(f"[DEBUG] Object Name: {obj_name}")
+    config_path = 'config.json'
+
+    # Step 1: Load the configuration
+    try:
+        if not os.path.exists(config_path):
+            raise FileNotFoundError(f"Config file '{config_path}' not found.")
+
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+
+        if obj_name not in config['objects']:
+            raise ValueError(f"Object '{obj_name}' not found in config.")
+            
+        obj = config['objects'][obj_name]
+        
+        if quant_name not in obj["quantifications"]:
+            raise ValueError(f"Quantification '{quant_name}' not found for object '{obj_name}'.")
+            
+        # Step 2: Get the path to the gene counts file
+        path_to_gene_count = obj["quantifications"][quant_name]["counts_path"]
+        if not os.path.exists(path_to_gene_count):
+            raise FileNotFoundError(f"Gene counts file '{path_to_gene_count}' not found.")
+        
+    except (FileNotFoundError, ValueError, KeyError) as e:
+        print(f"[ERROR] {e}")
+        return
+
+    # Step 3: Load gene counts
+    try:
+        df = pd.read_csv(path_to_gene_count)
+        if df.empty:
+            raise ValueError(f"The gene counts file '{path_to_gene_count}' is empty.")
+        
+        # Ensure the target gene exists in the dataframe
+        if target_gene not in df.iloc[:, 2].values:
+            raise ValueError(f"Target gene '{target_gene}' not found in gene counts file.")
+        
+    except pd.errors.EmptyDataError:
+        print(f"[ERROR] The gene counts file '{path_to_gene_count}' is empty or corrupt.")
+        return
+    except FileNotFoundError as e:
+        print(f"[ERROR] {e}")
+        return
+    except Exception as e:
+        print(f"[ERROR] An error occurred while loading the gene counts: {e}")
+        return
+
+    # Step 4: Extract the gene row and plot data
+    try:
+        # Convert the dataframe to numpy for fast lookup
+        array_with_genes = df.values
+        
+        # Fetch the row where the first column matches the target gene
+        gene_row = array_with_genes[array_with_genes[:, 0] == target_gene]
+        
+        if gene_row.size == 0:
+            raise ValueError(f"Gene '{target_gene}' not found in the gene counts file.")
+        
+        # Extract the gene's expression values across samples
+        values = gene_row[0, 1:].astype(float)  # Assuming gene expression values are numeric
+        labels = df.columns[1:]  # Sample names are in the columns
+        
+        # Step 5: Plot the gene abundances
+        plt.figure(figsize=(10, 6))
+        plt.bar(labels, values, color='blue')
+        plt.xlabel("Samples")
+        plt.ylabel("Expression Level")
+        plt.title(f"Gene Abundance for {target_gene}")
+        plt.xticks(rotation=45, ha="right")
+        plt.tight_layout()
+        plt.show()
+
+    except IndexError as e:
+        print(f"[ERROR] Index error occurred while processing gene row: {e}")
+    except ValueError as e:
+        print(f"[ERROR] Value error: {e}")
+    except Exception as e:
+        print(f"[ERROR] An unexpected error occurred during plotting: {e}")
+
 
 def main():
 
@@ -460,11 +763,12 @@ def main():
     parser_quantize.set_defaults(func=quantize)
 
     # Uncomment and implement additional subparsers as needed
-    # parser_list_quant = subparsers.add_parser('list_quant', help='List quantifications')
-    # parser_list_quant.set_defaults(func=list_quantifications)
+    parser_list_quant = subparsers.add_parser('list_quant', help='List quantifications')
+    parser_list_quant.add_argument('--obj', required=True, help='Object name')
+    parser_list_quant.set_defaults(func=list_quantifications)
 
-    # parser_plot = subparsers.add_parser('plot_gene_abundances', help='Plot gene abundances')
-    # parser_plot.add_argument('--gene', required=False, help='Gene name')
+    parser_plot = subparsers.add_parser('plot_gene_abundances', help='Plot gene abundances')
+    parser_plot.add_argument('--gene', required=False, help='Gene name')
     # parser_plot.set_defaults(func=plot_gene_abundances)
 
     # parser_corr = subparsers.add_parser('generate_correlation_matrix', help='Generate correlation matrix')
