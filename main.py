@@ -9,6 +9,7 @@ import requests
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+import pytximport as txi
 
 
 
@@ -331,6 +332,13 @@ def quantize(args):
             "type": "paired" if paired else "single"
         }
 
+
+
+    ## assuming quantification is done, and the quantified files are saved
+
+    ## converting transcript counts to gene counts using pytximport and storing it as a csv file
+
+    
 
 
 
