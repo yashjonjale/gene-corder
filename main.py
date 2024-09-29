@@ -350,8 +350,6 @@ def quantize(args):
 
         ## Save the path to the quantification in the obj quantification path entries
         print(f"[DEBUG] Saving quantification results for {sra}")
-        obj["quantifications"][name]["paths"].append(os.path.abspath(output_dir))
-        obj["quantifications"][name]["types"].append("paired" if paired else "single")
         abundances_tsv_path = os.path.join(output_dir, "abundance.tsv")
         abundances_tsv_path = os.path.abspath(abundances_tsv_path)
         abundances_tsv_paths.append(abundances_tsv_path)
