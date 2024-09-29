@@ -349,118 +349,118 @@ def quantize(args):
 
     ## Initialize quantification entry if not present
     # if name not in obj["quantifications"]:
-    print(f"[DEBUG] Creating new quantification entry '{name}'.")
-    obj["quantifications"][name] = {
-        "sra":{},
-        "counts_path": None,
-    }
-    # else:
-    #     print(f"[DEBUG] Quantification entry '{name}' already exists.")
-    #     return
+    # print(f"[DEBUG] Creating new quantification entry '{name}'.")
+    # obj["quantifications"][name] = {
+    #     "sra":{},
+    #     "counts_path": None,
+    # }
+    # # else:
+    # #     print(f"[DEBUG] Quantification entry '{name}' already exists.")
+    # #     return
     
-    sra_dir = f"./data/{obj_name}/{name}/"
-    os.makedirs(sra_dir, exist_ok=True)
-    ## Download SRA files
-    for sra in sra_list:
-        print(f"[DEBUG] Processing SRA accession: {sra}")
-        # Create path for the SRA file
-        obj["quantifications"][name]["sra"][sra] = {
-            "path": os.path.join(sra_dir, f"{sra}/{sra}.sra"),
-            "fastq_dir": os.path.join(sra_dir, f"{sra}/"),
-            "paired": paired
-        }
-        sra_path = os.path.join(sra_dir, f"{sra}/{sra}.sra")
-        print(f"[DEBUG] SRA file path: {sra_path}")
+    # sra_dir = f"./data/{obj_name}/{name}/"
+    # os.makedirs(sra_dir, exist_ok=True)
+    # ## Download SRA files
+    # for sra in sra_list:
+    #     print(f"[DEBUG] Processing SRA accession: {sra}")
+    #     # Create path for the SRA file
+    #     obj["quantifications"][name]["sra"][sra] = {
+    #         "path": os.path.join(sra_dir, f"{sra}/{sra}.sra"),
+    #         "fastq_dir": os.path.join(sra_dir, f"{sra}/"),
+    #         "paired": paired
+    #     }
+    #     sra_path = os.path.join(sra_dir, f"{sra}/{sra}.sra")
+    #     print(f"[DEBUG] SRA file path: {sra_path}")
 
-        download = False  # Flag to determine if download is required
+    #     download = False  # Flag to determine if download is required
 
-        # Check if SRA file already exists
-        if not os.path.exists(sra_path):
-            download = True
-            print(f"[DEBUG] SRA file {sra_path} does not exist and will be downloaded.")
-        else:
-            print(f"[DEBUG] SRA file {sra_path} already exists. Skipping download.")
+    #     # Check if SRA file already exists
+    #     if not os.path.exists(sra_path):
+    #         download = True
+    #         print(f"[DEBUG] SRA file {sra_path} does not exist and will be downloaded.")
+    #     else:
+    #         print(f"[DEBUG] SRA file {sra_path} already exists. Skipping download.")
 
-        # Download the SRA file using prefetch if required
-        if download:
-            print(f"Downloading {sra}...")
-            prefetch_cmd = [
-                "prefetch",
-                sra,
-                "-O",
-                sra_dir
-            ]
-            print(f"[DEBUG] Running prefetch command: {' '.join(prefetch_cmd)}")
-            try:
-                subprocess.run(prefetch_cmd, check=True)
-                print(f"SRA file {sra} downloaded to {sra_dir}")
-            except subprocess.CalledProcessError as e:
-                print(f"Error while downloading SRA file {sra}: {e}")
-                return
-        else:
-            print(f"[DEBUG] Skipping download for {sra} as it already exists.")
+    #     # Download the SRA file using prefetch if required
+    #     if download:
+    #         print(f"Downloading {sra}...")
+    #         prefetch_cmd = [
+    #             "prefetch",
+    #             sra,
+    #             "-O",
+    #             sra_dir
+    #         ]
+    #         print(f"[DEBUG] Running prefetch command: {' '.join(prefetch_cmd)}")
+    #         try:
+    #             subprocess.run(prefetch_cmd, check=True)
+    #             print(f"SRA file {sra} downloaded to {sra_dir}")
+    #         except subprocess.CalledProcessError as e:
+    #             print(f"Error while downloading SRA file {sra}: {e}")
+    #             return
+    #     else:
+    #         print(f"[DEBUG] Skipping download for {sra} as it already exists.")
         
-        #now download the metadata.tsv for the SRA
-        meta_path = os.path.join(sra_dir, f"{sra}/{sra}_metadata.tsv")
-        meta_cmd = [
-            "pysradb",
-            "metadata",
-            "--detailed",
-            sra
-        ]
+    #     #now download the metadata.tsv for the SRA
+    #     meta_path = os.path.join(sra_dir, f"{sra}/{sra}_metadata.tsv")
+    #     meta_cmd = [
+    #         "pysradb",
+    #         "metadata",
+    #         "--detailed",
+    #         sra
+    #     ]
 
-        print(f"[DEBUG] Running metadata command: {' '.join(meta_cmd)}")
-        try:
-            # subprocess.run(meta_cmd, check=True)
-            with open(meta_path, "w") as meta_file:
-                subprocess.run(meta_cmd, check=True, stdout=meta_file)
-            print(f"Metadata file {sra} downloaded to {sra_dir}")
-            obj["quantifications"][name]["sra"][sra]["meta_path"] = meta_path
-        except subprocess.CalledProcessError as e:
-            print(f"Error while downloading Metadata file {sra}: {e}")
-            return
+    #     print(f"[DEBUG] Running metadata command: {' '.join(meta_cmd)}")
+    #     try:
+    #         # subprocess.run(meta_cmd, check=True)
+    #         with open(meta_path, "w") as meta_file:
+    #             subprocess.run(meta_cmd, check=True, stdout=meta_file)
+    #         print(f"Metadata file {sra} downloaded to {sra_dir}")
+    #         obj["quantifications"][name]["sra"][sra]["meta_path"] = meta_path
+    #     except subprocess.CalledProcessError as e:
+    #         print(f"Error while downloading Metadata file {sra}: {e}")
+    #         return
 
-    print(f"SRA prefetch Done for {sra_list}")
+    # print(f"SRA prefetch Done for {sra_list}")
 
     
 
-    ## Once downloaded, perform fastq-dump on the corresponding SRA files
-    for sra in sra_list:
-        print(f"[DEBUG] Running fastq-dump for SRA accession: {sra}")
-        sra_path = f"./data/{obj_name}/{name}/{sra}/{sra}.sra"
-        fastqdump_path = f"./data/{obj_name}/{name}/{sra}/"
-        print(f"[DEBUG] SRA path: {sra_path}")
-        print(f"[DEBUG] Fastq output directory: {fastqdump_path}")
+    # ## Once downloaded, perform fastq-dump on the corresponding SRA files
+    # for sra in sra_list:
+    #     print(f"[DEBUG] Running fastq-dump for SRA accession: {sra}")
+    #     sra_path = f"./data/{obj_name}/{name}/{sra}/{sra}.sra"
+    #     fastqdump_path = f"./data/{obj_name}/{name}/{sra}/"
+    #     print(f"[DEBUG] SRA path: {sra_path}")
+    #     print(f"[DEBUG] Fastq output directory: {fastqdump_path}")
 
-        if paired:
-            fastqdump_cmd = [
-                "fastq-dump",
-                "--split-files",
-                "-O",
-                fastqdump_path,
-                sra_path
-            ]
-            print(f"[DEBUG] Running paired-end fastq-dump command: {' '.join(fastqdump_cmd)}")
-        else:
-            fastqdump_cmd = [
-                "fastq-dump",
-                "-O",
-                fastqdump_path,
-                sra_path
-            ]
-            print(f"[DEBUG] Running single-end fastq-dump command: {' '.join(fastqdump_cmd)}")
+    #     if paired:
+    #         fastqdump_cmd = [
+    #             "fastq-dump",
+    #             "--split-files",
+    #             "-O",
+    #             fastqdump_path,
+    #             sra_path
+    #         ]
+    #         print(f"[DEBUG] Running paired-end fastq-dump command: {' '.join(fastqdump_cmd)}")
+    #     else:
+    #         fastqdump_cmd = [
+    #             "fastq-dump",
+    #             "-O",
+    #             fastqdump_path,
+    #             sra_path
+    #         ]
+    #         print(f"[DEBUG] Running single-end fastq-dump command: {' '.join(fastqdump_cmd)}")
         
-        try:
-            # Uncomment the next line to enable fastq-dump execution
-            subprocess.run(fastqdump_cmd, check=True)
-            print(f"Fastq files generated for {sra}")
-        except subprocess.CalledProcessError as e:
-            print(f"Error while running fastq-dump for {sra}: {e}")
-            return
+    #     try:
+    #         # Uncomment the next line to enable fastq-dump execution
+    #         subprocess.run(fastqdump_cmd, check=True)
+    #         print(f"Fastq files generated for {sra}")
+    #     except subprocess.CalledProcessError as e:
+    #         print(f"Error while running fastq-dump for {sra}: {e}")
+    #         return
 
-    print(f"Fastq dump Done for {sra_list}")
+    # print(f"Fastq dump Done for {sra_list}")
 
-    ## Now, quantifying the fastq files using kallisto, different commands for paired and single-end reads
+    # ## Now, quantifying the fastq files using kallisto, different commands for paired and single-end reads
     print("Quantifying the fastq files using kallisto...")
     
     # Run kallisto quantification for each fastq file
