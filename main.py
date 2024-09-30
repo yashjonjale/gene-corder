@@ -19,6 +19,8 @@ from Bio import SeqIO
 from pydeseq2.dds import DeseqDataSet
 from pydeseq2.default_inference import DefaultInference
 from pydeseq2.ds import DeseqStats
+from sklearn.decomposition import PCA
+
 
 
 def map_gene_ids_to_names(gtf_file, gene_counts_df):
@@ -1278,6 +1280,241 @@ def quant_deseq(args):
         return
 
 
+    metadata = pd.read_csv(meta_path, sep="\t")
+    metadata.set_index("run_accession", inplace=True)
+    metadata = metadata.sort_values("library_name")
+    metadata["library_name"] = pd.Categorical(metadata["library_name"], categories=metadata["library_name"].unique())
+
+    sra_list = [acc for acc in metadata.index]
+
+    # Download the SRA files
+    sra_dir = f"./data/{obj_name}/{name}/"
+    os.makedirs(sra_dir, exist_ok=True)
+    ## Download SRA files
+    for sra in sra_list:
+        print(f"[DEBUG] Processing SRA accession: {sra}")
+        # Create path for the SRA file
+        obj["quantifications"][name]["sra"][sra] = {
+            "path": os.path.join(sra_dir, f"{sra}/{sra}.sra"),
+            "fastq_dir": os.path.join(sra_dir, f"{sra}/"),
+            "paired": paired
+        }
+        sra_path = os.path.join(sra_dir, f"{sra}/{sra}.sra")
+        print(f"[DEBUG] SRA file path: {sra_path}")
+
+        download = False  # Flag to determine if download is required
+
+        # Check if SRA file already exists
+        if not os.path.exists(sra_path):
+            download = True
+            print(f"[DEBUG] SRA file {sra_path} does not exist and will be downloaded.")
+        else:
+            print(f"[DEBUG] SRA file {sra_path} already exists. Skipping download.")
+
+        # Download the SRA file using prefetch if required
+        if download:
+            print(f"Downloading {sra}...")
+            prefetch_cmd = [
+                "prefetch",
+                sra,
+                "-O",
+                sra_dir
+            ]
+            print(f"[DEBUG] Running prefetch command: {' '.join(prefetch_cmd)}")
+            try:
+                subprocess.run(prefetch_cmd, check=True)
+                print(f"SRA file {sra} downloaded to {sra_dir}")
+            except subprocess.CalledProcessError as e:
+                print(f"Error while downloading SRA file {sra}: {e}")
+                return
+        else:
+            print(f"[DEBUG] Skipping download for {sra} as it already exists.")
+        
+    print(f"SRA prefetch Done for {sra_list}")
+
+
+        ## Once downloaded, perform fastq-dump on the corresponding SRA files
+    for sra in sra_list:
+        print(f"[DEBUG] Running fastq-dump for SRA accession: {sra}")
+        sra_path = f"./data/{obj_name}/{name}/{sra}/{sra}.sra"
+        fastqdump_path = f"./data/{obj_name}/{name}/{sra}/"
+        print(f"[DEBUG] SRA path: {sra_path}")
+        print(f"[DEBUG] Fastq output directory: {fastqdump_path}")
+
+        if paired:
+            fastqdump_cmd = [
+                "fastq-dump",
+                "--split-files",
+                "-O",
+                fastqdump_path,
+                sra_path
+            ]
+            print(f"[DEBUG] Running paired-end fastq-dump command: {' '.join(fastqdump_cmd)}")
+        else:
+            fastqdump_cmd = [
+                "fastq-dump",
+                "-O",
+                fastqdump_path,
+                sra_path
+            ]
+            print(f"[DEBUG] Running single-end fastq-dump command: {' '.join(fastqdump_cmd)}")
+        
+        try:
+            # Uncomment the next line to enable fastq-dump execution
+            subprocess.run(fastqdump_cmd, check=True)
+            print(f"Fastq files generated for {sra}")
+        except subprocess.CalledProcessError as e:
+            print(f"Error while running fastq-dump for {sra}: {e}")
+            return
+
+    print(f"Fastq dump Done for {sra_list}")
+
+
+    print("Quantifying the fastq files using kallisto...")
+    
+    # Run kallisto quantification for each fastq file
+    abundances_tsv_paths = []
+    for sra in sra_list:
+        print(f"[DEBUG] Quantifying SRA accession: {sra}")
+        fastqdump_path = f"./data/{obj_name}/{name}/{sra}/"
+        kallisto_index_path = obj["index_paths"]["kallisto_index"]
+        output_dir = f"./data/{obj_name}/{name}/{sra}_quant/"
+        os.makedirs(output_dir, exist_ok=True)
+        print(f"[DEBUG] Kallisto index path: {kallisto_index_path}")
+        print(f"[DEBUG] Kallisto output directory: {output_dir}")
+        obj["quantifications"][name]["sra"][sra]["quant_path"] = output_dir
+        if paired:
+            kallisto_cmd = [
+                "kallisto", "quant",
+                "-i", kallisto_index_path,
+                "-o", output_dir,
+                "-t", "24",
+                f"{fastqdump_path}/{sra}_1.fastq",
+                f"{fastqdump_path}/{sra}_2.fastq"
+            ]
+            print(f"[DEBUG] Running paired-end kallisto quant command: {' '.join(kallisto_cmd)}")
+        else:
+            kallisto_cmd = [
+                "kallisto", "quant",
+                "-i", kallisto_index_path,
+                "--single",
+                "-l", "200",
+                "-s", "20",
+                "-t", "24",
+                "-o", output_dir,
+                f"{fastqdump_path}/{sra}.fastq"
+            ]
+            print(f"[DEBUG] Running single-end kallisto quant command: {' '.join(kallisto_cmd)}")
+        
+        try:
+            print(f"Running kallisto quant for {sra}...")
+            print(kallisto_cmd)
+            subprocess.run(kallisto_cmd, check=True)
+            print(f"Quantification completed for {sra}")
+        except subprocess.CalledProcessError as e:
+            print(f"Error while running kallisto quant for {sra}: {e}")
+            return
+
+        ## Save the path to the quantification in the obj quantification path entries
+        print(f"[DEBUG] Saving quantification results for {sra}")
+        abundances_tsv_path = os.path.join(output_dir, "abundance.tsv")
+        abundances_tsv_path = os.path.abspath(abundances_tsv_path)
+        abundances_tsv_paths.append(abundances_tsv_path)
+        print(f"[DEBUG] Abundance TSV path: {abundances_tsv_path}")
+
+
+    # update the obj with the new paths
+    print("Saving the new paths in config.json\n")
+    print(config['objects'][obj_name])
+    config['objects'][obj_name] = obj
+    save_config(config)
+
+    print(f"[DEBUG] Quantification '{name}' completed and saved to config.")
+
+    t2g_path = obj["index_paths"]["t2g"]
+    gtf_path = obj["paths"]["gtf"]
+    print(f"[DEBUG] t2g path: {t2g_path}")
+    
+    #load the t2g file as a dataframe
+    t2g_df = pd.read_csv(t2g_path, sep="\t", header=None,names=["transcript_id", "gene_id", "gene_name", "transcript_name", "chrom", "start", "end", "strand"])
+    t2g = t2g_df[["transcript_id", "gene_id"]]
+
+
+
+    files = abundances_tsv_paths
+    print(f"[DEBUG] Files to import: {files}")
+    print(f"[DEBUG] Gene map path: {t2g_path}")
+
+    try:
+        result = tximport(file_paths=files, data_type='kallisto', transcript_gene_map=t2g,
+               id_column = "target_id",
+               counts_column = "est_counts",
+               length_column = "eff_length", abundance_column = "tpm")
+        result.X = result.X.round().astype(int)
+        # result.obs = pd.DataFrame(index=result.obs_names)
+        result.obs["type"] = "type-none"
+        result.obs["replicate"] = "replicate-none"
+
+    except Exception as e:
+        print(f"[ERROR] Tximport Failure: {e}")
+        return
+    
+
+
+    metadata["type"] = metadata["library_name"].str.split("-", n=1).str[0]
+    metadata["type"] = pd.Categorical(metadata["type"], categories=metadata["type"].unique())
+    metadata["replicate"] = metadata["library_name"].str.split("-", n=1).str[1]
+
+    result.obs["type"] = metadata["type"]
+    result.obs["replicate"] = metadata["replicate"]
+
+    gtf = pr.read_gtf(gtf_path)
+    gtf_gene = gtf.df[gtf.df["Feature"] == "gene"][["gene_id", "gene_name"]].drop_duplicates()
+    gtf_gene["gene_name"].fillna(gtf_gene["gene_id"], inplace=True)
+    gtf_gene.set_index("gene_id", inplace=True)
+
+
+    common_genes = result.var.index.intersection(gtf_gene.index)
+
+    result = result[:, result.var.index.isin(common_genes)]
+    result.obs = metadata
+    #.loc[result.obs.index]
+
+    dds = DeseqDataSet(adata=result, design_factors="type",     refit_cooks=True,
+                        inference=DefaultInference(n_cpus=8),
+                        quiet=True,
+                    )
+    dds.deseq2()
+
+    df = pd.DataFrame(dds.layers["normed_counts"].T, index=result.obs_names, columns=result.var_names)
+    #save to csv in the output directory
+    df.to_csv(os.path.join(output_dir, "normed_counts.csv"))
+    #vsd = vst(dds)
+    #vsd_data = vsd.transform()
+    dds.vst(use_design=True)
+
+    df = dds.layers["vst_counts"]
+    pca_vsd =  PCA(n_components=2)
+    pca_vsd.fit(df)
+    pca_vsd = pca_vsd.transform(df)
+
+    plt.figure(figsize=(10, 5))
+    plt.subplot(1, 2, 1)
+    sns.scatterplot(x=pca_vsd[:, 0], y=pca_vsd[:, 1], hue=metadata["type"])
+    plt.title("PCA (VST) by Type")
+
+    plt.subplot(1, 2, 2)
+    sns.scatterplot(x=pca_vsd[:, 0], y=pca_vsd[:, 1], hue=metadata["replicate"])
+    plt.title("PCA (VST) by Replicate")
+
+    plt.tight_layout()
+    plt.show()
+
+    plt.savefig(os.path.join(output_dir, "pca_vst.png"))
+
+
+
+
 
 
     
@@ -1346,6 +1583,7 @@ def main():
     parser_name2id = subparsers.add_parser('name2id', help='Convert gene name to gene ID')
     parser_name2id.add_argument('--gene_name', required=True, help='Gene name')
     parser_name2id.add_argument('--obj', required=True, help='Object name')
+    
     parser_name2id.set_defaults(func=name2id)
 
     parser_gene2fasta = subparsers.add_parser('gene2fasta', help='Extract gene sequence to FASTA')
@@ -1365,6 +1603,8 @@ def main():
     parser_deseq.add_argument('--quantification_name', required=True, help='Quantification name')
     parser_deseq.add_argument('--srp', required=True, help='Comma-separated SRA accession codes')
     parser_deseq.add_argument('--paired', required=False, action='store_true', help='Paired-end reads')
+    parser_deseq.add_argument('--output_dir', required=True, help='Output directory')
+
     parser_deseq.set_defaults(func=quant_deseq)
 
     args = parser.parse_args()
