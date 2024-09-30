@@ -1220,6 +1220,7 @@ def main():
     parser_plot.add_argument('--gene', required=False, help='Gene name')
     parser_plot.add_argument('--named', required=False, action='store_true', help='Gene name is provided')
     parser_plot.add_argument('--obj', required=True, help='Object name')
+    parser_plot.add_argument('--quantification_name', required=True, help='Quantification name')
     parser_plot.set_defaults(func=plot_gene_abundances)
 
     parser_corr = subparsers.add_parser('generate_correlation_matrix', help='Generate correlation matrix')
