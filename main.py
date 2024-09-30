@@ -20,7 +20,7 @@ from pydeseq2.dds import DeseqDataSet
 from pydeseq2.default_inference import DefaultInference
 from pydeseq2.ds import DeseqStats
 from sklearn.decomposition import PCA
-
+import shutil
 
 
 def map_gene_ids_to_names(gtf_file, gene_counts_df):
@@ -590,9 +590,11 @@ def quantize(args):
         sra_path = f"./data/{obj_name}/{name}/{sra}/{sra}.sra"
         fastqdump_path = f"./data/{obj_name}/{name}/{sra}/"
         print(f"[DEBUG] SRA path: {sra_path}")
-        print(f"[DEBUG] Fastq output directory: {fastqdump_path}")
-
+        print(f"[DEBUG] Fastq output directory: {fastqdump_path}")):
         if paired:
+            if os.path.exists(f"{fastqdump_path}/{sra}_1.fastq") and os.path.exists(f"{fastqdump_path}/{sra}_2.fastq"):
+                print(f"[DEBUG] Paired-end fastq files already exist for {sra}. Skipping fastq-dump.")
+                continue
             fastqdump_cmd = [
                 "fastq-dump",
                 "--split-files",
@@ -602,6 +604,9 @@ def quantize(args):
             ]
             print(f"[DEBUG] Running paired-end fastq-dump command: {' '.join(fastqdump_cmd)}")
         else:
+            if os.path.exists(f"{fastqdump_path}/{sra}.fastq"):
+                print(f"[DEBUG] Single-end fastq file already exists for {sra}. Skipping fastq-dump.")
+                continue
             fastqdump_cmd = [
                 "fastq-dump",
                 "-O",
@@ -630,6 +635,8 @@ def quantize(args):
         fastqdump_path = f"./data/{obj_name}/{name}/{sra}/"
         kallisto_index_path = obj["index_paths"]["kallisto_index"]
         output_dir = f"./data/{obj_name}/{name}/{sra}_quant/"
+        if os.path.exists(output_dir):
+            continue
         os.makedirs(output_dir, exist_ok=True)
         print(f"[DEBUG] Kallisto index path: {kallisto_index_path}")
         print(f"[DEBUG] Kallisto output directory: {output_dir}")
@@ -1519,7 +1526,34 @@ def quant_deseq(args):
 
     
 
+def remove_object(args):
+    obj_name = args.obj
+    print(f"Removing object '{obj_name}'...")
+    config = None
+    try:
+        with open('config.json', 'r') as f:
+            config = json.load(f)
+    except FileNotFoundError:
+        print("[ERROR] config.json not found.")
+        return
 
+    if obj_name not in config['objects']:
+        print(f"[ERROR] Object '{obj_name}' not found in config.")
+        return
+    #delete the object directory using os
+    dir_path = f"./data/{obj_name}"
+    try:
+        shutil.rmtree(dir_path)
+        print(f"Object directory '{dir_path}' removed.")
+    except Exception as e:
+        print(f"[ERROR] Error removing object directory: {e}")
+        return
+    
+
+
+    del config['objects'][obj_name]
+    save_config(config)
+    print(f"Object '{obj_name}' removed from config.")
 
 
 
@@ -1606,6 +1640,11 @@ def main():
     parser_deseq.add_argument('--output_dir', required=True, help='Output directory')
 
     parser_deseq.set_defaults(func=quant_deseq)
+
+    parser_remove = subparsers.add_parser('remove', help='Remove object')
+    parser_remove.add_argument('--obj', required=True, help='Object name')
+    parser_remove.set_defaults(func=remove_object)
+    
 
     args = parser.parse_args()
     print(f"[DEBUG] Parsed arguments: {args}")
