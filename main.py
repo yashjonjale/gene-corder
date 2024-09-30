@@ -635,8 +635,6 @@ def quantize(args):
         fastqdump_path = f"./data/{obj_name}/{name}/{sra}/"
         kallisto_index_path = obj["index_paths"]["kallisto_index"]
         output_dir = f"./data/{obj_name}/{name}/{sra}_quant/"
-        if os.path.exists(output_dir):
-            continue
         os.makedirs(output_dir, exist_ok=True)
         print(f"[DEBUG] Kallisto index path: {kallisto_index_path}")
         print(f"[DEBUG] Kallisto output directory: {output_dir}")
