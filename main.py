@@ -917,6 +917,7 @@ def plot_gene_abundances(args):
 
     # Step 3: Load gene counts
     try:
+        print(f"[DEBUG] Loading gene counts from '{path_to_gene_count}'")
         df = pd.read_csv(path_to_gene_count)
         if df.empty:
             raise ValueError(f"The gene counts file '{path_to_gene_count}' is empty.")
