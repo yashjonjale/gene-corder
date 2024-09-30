@@ -816,9 +816,9 @@ def quantize(args):
         print(f"[DEBUG] Gene counts DataFrame columns:\n{gene_counts_df.columns}")
         print(f"[DEBUG] Gene counts DataFrame index:\n{gene_counts_df.index}")
 
-        dds = DeseqDataSet(counts = gene_counts_df, metadata = pd.DataFrame({'condition': gene_counts_df.columns}, index = gene_counts_df.index))
+        dds = DeseqDataSet(counts = gene_counts_df, metadata = pd.DataFrame({'condition': gene_counts_df.T.columns}, index = gene_counts_df.T.columns))
         dds.fit_size_factors()
-        gngdf = pd.DataFrame(dds.layers["normed_counts"].T, index = gene_counts_df.index, columns = gene_counts_df.columns)
+        gngdf = pd.DataFrame(dds.layers["normed_counts"].T, index = gene_counts_df.T.index, columns = gene_counts_df.T.columns)
 
         # print(f"[DEBUG] result,obs_names: {result.obs_names}")
 
