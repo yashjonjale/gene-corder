@@ -811,7 +811,12 @@ def quantize(args):
 
         # Convert the numpy array result.X to a pandas DataFrame
         gene_counts_df = pd.DataFrame(result.X, index=result.obs_names, columns=result.var_names)
-        dds = DeseqDataSet(counts = gene_counts_df, metadata = pd.DataFrame({'condition': gene_counts_df.columns}, index = gene_counts_df.columns))
+        print(f"[DEBUG] Gene counts DataFrame shape: {gene_counts_df.shape}")
+        print(f"[DEBUG] Gene counts DataFrame head:\n{gene_counts_df.head()}")
+        print(f"[DEBUG] Gene counts DataFrame columns:\n{gene_counts_df.columns}")
+        print(f"[DEBUG] Gene counts DataFrame index:\n{gene_counts_df.index}")oo
+
+        dds = DeseqDataSet(counts = gene_counts_df, metadata = pd.DataFrame({'condition': gene_counts_df.columns}, index = gene_counts_df.index))
         dds.fit_size_factors()
         gngdf = pd.DataFrame(dds.layers["normed_counts"].T, index = gene_counts_df.index, columns = gene_counts_df.columns)
 
