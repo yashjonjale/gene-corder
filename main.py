@@ -9,24 +9,15 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from pytximport import tximport
 import pyranges as pr
-
+import numpy as np
 
 import pandas as pd
 import pyranges as pr
 import os
+from pyfaidx import Fasta
+from Bio import SeqIO
 
-def create_gene_maps(gtf_file):
-    # Load GTF file into a PyRanges object
-    gr = pr.read_gtf(gtf_file)
-    
-    # Select only rows where both 'gene_id' and 'gene_name' exist
-    df = gr.df[['gene_id', 'gene_name']].drop_duplicates()
-    
-    # Create dictionaries for gene_id to gene_name and vice versa
-    gene_id_to_name = dict(zip(df['gene_id'], df['gene_name']))
-    gene_name_to_id = dict(zip(df['gene_name'], df['gene_id']))
-    
-    return gene_id_to_name, gene_name_to_id
+
 
 def map_gene_ids_to_names(gtf_file, gene_counts_df):
     """
@@ -74,26 +65,157 @@ def map_gene_ids_to_names(gtf_file, gene_counts_df):
     # Step 7: Return the updated dataframe
     return gene_counts_df
 
-# # Example usage:
-
-# gtf_file = "your_file.gtf"  # Replace with the actual path to your GTF file
-
-# # Sample RNA-seq gene counts dataframe
-# data = {
-#     "gene_id": ["EMIHUDRAFT_100000", "EMIHUDRAFT_100004", "EMIHUDRAFT_100007", "EMIHUDRAFT_100011", "EMIHUDRAFT_100015"],
-#     "sample1": [246, 457, 152, 40.5625, 60.7854]
-# }
-# df = pd.DataFrame(data)
-
-# Call the function and handle potential errors
-# try:
-#     updated_df = map_gene_ids_to_names(gtf_file, df)
-#     print(updated_df)
-# except (FileNotFoundError, ValueError, RuntimeError) as e:
-#     print(f"[ERROR] {e}")
 
 
 
+
+# 1. Extract Gene Sequence
+def extract_gene_sequence(gene_id, gtf_file, genome_fa, output_fa_path):
+    # Error handling for file existence
+    if not os.path.exists(gtf_file):
+        raise FileNotFoundError(f"GTF file '{gtf_file}' not found.")
+    if not os.path.exists(genome_fa):
+        raise FileNotFoundError(f"Genome FASTA file '{genome_fa}' not found.")
+    
+    # Load the GTF file
+    try:
+        gr = pr.read_gtf(gtf_file)
+    except Exception as e:
+        raise ValueError(f"Error reading GTF file: {str(e)}")
+    
+    # Filter for gene_name
+    # gene_gtf = gr.df[gr.df['gene_name'] == gene_name]
+    gene_gtf = gr.df[gr.df['gene_id'] == gene_id]
+    if gene_gtf.empty:
+        raise ValueError(f"Gene '{gene_id}' not found in the GTF file.")
+    
+    # Load the genome FASTA
+    try:
+        genome = Fasta(genome_fa)
+    except Exception as e:
+        raise ValueError(f"Error loading genome FASTA file: {str(e)}")
+
+    # Initialize sequence
+    gene_sequence = ""
+
+    # Extract sequences based on coordinates
+    try:
+        for _, row in gene_gtf.iterrows():
+            chrom = row['Chromosome']
+            start = row['Start']
+            end = row['End']
+            strand = row['Strand']
+            
+            # Extract sequence
+            seq = genome[chrom][start-1:end]  # pyfaidx is 0-based
+
+            if strand == '-':
+                seq = seq.reverse.complement
+
+            gene_sequence += str(seq)
+    except Exception as e:
+        raise ValueError(f"Error extracting sequence: {str(e)}")
+    
+    # Write to a FASTA file
+    try:
+        with open(output_fa_path, 'w') as f:
+            f.write(f">{gene_id}\n")
+            for i in range(0, len(gene_sequence), 60):
+                f.write(gene_sequence[i:i+60] + "\n")
+        print(f"Gene sequence for {gene_id} saved to {output_fa_path}")
+    except Exception as e:
+        raise IOError(f"Error writing to FASTA file: {str(e)}")
+
+
+# 2. Parse GTF for gene mappings
+def create_gene_maps(gtf_file):
+    # Error handling for file existence
+    if not os.path.exists(gtf_file):
+        raise FileNotFoundError(f"GTF file '{gtf_file}' not found.")
+    
+    try:
+        gr = pr.read_gtf(gtf_file)
+    except Exception as e:
+        raise ValueError(f"Error reading GTF file: {str(e)}")
+
+    # Filter and create mappings
+    try:
+        df = gr.df[['gene_id', 'gene_name']].drop_duplicates()
+        gene_id_to_name = dict(zip(df['gene_id'], df['gene_name']))
+        gene_name_to_id = dict(zip(df['gene_name'], df['gene_id']))
+    except Exception as e:
+        raise ValueError(f"Error processing GTF data: {str(e)}")
+    
+    return gene_id_to_name, gene_name_to_id
+
+
+# 3. Find gene by sequence
+def find_gene_by_sequence(input_fa, gtf_file, genome_fa):
+    # Error handling for file existence
+    if not os.path.exists(input_fa):
+        raise FileNotFoundError(f"Input FASTA file '{input_fa}' not found.")
+    if not os.path.exists(gtf_file):
+        raise FileNotFoundError(f"GTF file '{gtf_file}' not found.")
+    if not os.path.exists(genome_fa):
+        raise FileNotFoundError(f"Genome FASTA file '{genome_fa}' not found.")
+    
+    # Load the input sequence
+    try:
+        input_seq_record = list(SeqIO.parse(input_fa, "fasta"))
+        if len(input_seq_record) != 1:
+            raise ValueError("Input FASTA file should contain exactly one sequence.")
+        input_sequence = str(input_seq_record[0].seq)
+    except Exception as e:
+        raise ValueError(f"Error reading input FASTA file: {str(e)}")
+    
+    # Load GTF file
+    try:
+        gr = pr.read_gtf(gtf_file)
+    except Exception as e:
+        raise ValueError(f"Error reading GTF file: {str(e)}")
+
+    # Load genome
+    try:
+        genome = Fasta(genome_fa)
+    except Exception as e:
+        raise ValueError(f"Error loading genome FASTA file: {str(e)}")
+    
+    # Dictionary to store gene sequences
+    gene_sequences = {}
+
+    # Iterate over each gene in the GTF
+    try:
+        for gene_name, gene_gtf in gr.df.groupby("gene_name"):
+            gene_sequence = ""
+            for _, row in gene_gtf.iterrows():
+                chrom = row['Chromosome']
+                start = row['Start']
+                end = row['End']
+                strand = row['Strand']
+
+                seq = genome[chrom][start-1:end]  # pyfaidx is 0-based
+
+                if strand == '-':
+                    seq = seq.reverse.complement
+
+                gene_sequence += str(seq)
+
+            # Store gene sequence
+            gene_sequences[gene_name] = gene_sequence
+    except Exception as e:
+        raise ValueError(f"Error processing GTF or genome data: {str(e)}")
+
+    # Compare input sequence with each gene's sequence
+    try:
+        for gene_name, gene_sequence in gene_sequences.items():
+            if input_sequence in gene_sequence or gene_sequence in input_sequence:
+                print(f"Input sequence matches gene: {gene_name}")
+                return gene_name
+    except Exception as e:
+        raise ValueError(f"Error comparing sequences: {str(e)}")
+
+    print("No matching gene found for the input sequence.")
+    return None
 
 
 def process_gene_counts(obj, abundances_tsv_paths, obj_name, name):
@@ -193,6 +315,8 @@ def instantiate_organism(args):
     print(f"Genome Path: {genome_path}")
     print(f"GTF Path: {gtf_path}")
 
+
+
     # Check if paths are absolute, if not, make them absolute
     if transcript_path is not None:
         if not os.path.isabs(transcript_path):
@@ -248,6 +372,24 @@ def instantiate_organism(args):
     output_dir = f"./data/{name}"
     print(f"[DEBUG] Creating output directory at {output_dir}")
     os.makedirs(output_dir, exist_ok=True)
+
+    # constructing the gene maps
+    gene_id_to_name, gene_name_to_id = create_gene_maps(gtf_path)
+
+    #save them as json files, and store the paths in the object
+    gene_id_to_name_path = os.path.join(output_dir, f"{organism_name}_gene_id_to_name.json")
+    gene_name_to_id_path = os.path.join(output_dir, f"{organism_name}_gene_name_to_id.json")
+
+    with open(gene_id_to_name_path, 'w') as f:
+        json.dump(gene_id_to_name, f, indent=4)
+    with open(gene_name_to_id_path, 'w') as f:
+        json.dump(gene_name_to_id, f, indent=4)
+    
+    obj["gene_maps"] = {
+        "gene_id_to_name": gene_id_to_name_path,
+        "gene_name_to_id": gene_name_to_id_path
+    }
+
 
     ## Run gffread to convert GTF to FASTA if transcript_path is not provided or doesn't exist
     if transcript_path is None or not os.path.exists(transcript_path):
@@ -362,116 +504,116 @@ def quantize(args):
 
     ## Initialize quantification entry if not present
     # if name not in obj["quantifications"]:
-    # print(f"[DEBUG] Creating new quantification entry '{name}'.")
-    # obj["quantifications"][name] = {
-    #     "sra":{},
-    #     "counts_path": None,
-    # }
-    # # else:
-    # #     print(f"[DEBUG] Quantification entry '{name}' already exists.")
-    # #     return
+    print(f"[DEBUG] Creating new quantification entry '{name}'.")
+    obj["quantifications"][name] = {
+        "sra":{},
+        "counts_path": None,
+    }
+    # else:
+    #     print(f"[DEBUG] Quantification entry '{name}' already exists.")
+    #     return
     
-    # sra_dir = f"./data/{obj_name}/{name}/"
-    # os.makedirs(sra_dir, exist_ok=True)
-    # ## Download SRA files
-    # for sra in sra_list:
-    #     print(f"[DEBUG] Processing SRA accession: {sra}")
-    #     # Create path for the SRA file
-    #     obj["quantifications"][name]["sra"][sra] = {
-    #         "path": os.path.join(sra_dir, f"{sra}/{sra}.sra"),
-    #         "fastq_dir": os.path.join(sra_dir, f"{sra}/"),
-    #         "paired": paired
-    #     }
-    #     sra_path = os.path.join(sra_dir, f"{sra}/{sra}.sra")
-    #     print(f"[DEBUG] SRA file path: {sra_path}")
+    sra_dir = f"./data/{obj_name}/{name}/"
+    os.makedirs(sra_dir, exist_ok=True)
+    ## Download SRA files
+    for sra in sra_list:
+        print(f"[DEBUG] Processing SRA accession: {sra}")
+        # Create path for the SRA file
+        obj["quantifications"][name]["sra"][sra] = {
+            "path": os.path.join(sra_dir, f"{sra}/{sra}.sra"),
+            "fastq_dir": os.path.join(sra_dir, f"{sra}/"),
+            "paired": paired
+        }
+        sra_path = os.path.join(sra_dir, f"{sra}/{sra}.sra")
+        print(f"[DEBUG] SRA file path: {sra_path}")
 
-    #     download = False  # Flag to determine if download is required
+        download = False  # Flag to determine if download is required
 
-    #     # Check if SRA file already exists
-    #     if not os.path.exists(sra_path):
-    #         download = True
-    #         print(f"[DEBUG] SRA file {sra_path} does not exist and will be downloaded.")
-    #     else:
-    #         print(f"[DEBUG] SRA file {sra_path} already exists. Skipping download.")
+        # Check if SRA file already exists
+        if not os.path.exists(sra_path):
+            download = True
+            print(f"[DEBUG] SRA file {sra_path} does not exist and will be downloaded.")
+        else:
+            print(f"[DEBUG] SRA file {sra_path} already exists. Skipping download.")
 
-    #     # Download the SRA file using prefetch if required
-    #     if download:
-    #         print(f"Downloading {sra}...")
-    #         prefetch_cmd = [
-    #             "prefetch",
-    #             sra,
-    #             "-O",
-    #             sra_dir
-    #         ]
-    #         print(f"[DEBUG] Running prefetch command: {' '.join(prefetch_cmd)}")
-    #         try:
-    #             subprocess.run(prefetch_cmd, check=True)
-    #             print(f"SRA file {sra} downloaded to {sra_dir}")
-    #         except subprocess.CalledProcessError as e:
-    #             print(f"Error while downloading SRA file {sra}: {e}")
-    #             return
-    #     else:
-    #         print(f"[DEBUG] Skipping download for {sra} as it already exists.")
+        # Download the SRA file using prefetch if required
+        if download:
+            print(f"Downloading {sra}...")
+            prefetch_cmd = [
+                "prefetch",
+                sra,
+                "-O",
+                sra_dir
+            ]
+            print(f"[DEBUG] Running prefetch command: {' '.join(prefetch_cmd)}")
+            try:
+                subprocess.run(prefetch_cmd, check=True)
+                print(f"SRA file {sra} downloaded to {sra_dir}")
+            except subprocess.CalledProcessError as e:
+                print(f"Error while downloading SRA file {sra}: {e}")
+                return
+        else:
+            print(f"[DEBUG] Skipping download for {sra} as it already exists.")
         
-    #     #now download the metadata.tsv for the SRA
-    #     meta_path = os.path.join(sra_dir, f"{sra}/{sra}_metadata.tsv")
-    #     meta_cmd = [
-    #         "pysradb",
-    #         "metadata",
-    #         "--detailed",
-    #         sra
-    #     ]
+        #now download the metadata.tsv for the SRA
+        meta_path = os.path.join(sra_dir, f"{sra}/{sra}_metadata.tsv")
+        meta_cmd = [
+            "pysradb",
+            "metadata",
+            "--detailed",
+            sra
+        ]
 
-    #     print(f"[DEBUG] Running metadata command: {' '.join(meta_cmd)}")
-    #     try:
-    #         # subprocess.run(meta_cmd, check=True)
-    #         with open(meta_path, "w") as meta_file:
-    #             subprocess.run(meta_cmd, check=True, stdout=meta_file)
-    #         print(f"Metadata file {sra} downloaded to {sra_dir}")
-    #         obj["quantifications"][name]["sra"][sra]["meta_path"] = meta_path
-    #     except subprocess.CalledProcessError as e:
-    #         print(f"Error while downloading Metadata file {sra}: {e}")
-    #         return
+        print(f"[DEBUG] Running metadata command: {' '.join(meta_cmd)}")
+        try:
+            # subprocess.run(meta_cmd, check=True)
+            with open(meta_path, "w") as meta_file:
+                subprocess.run(meta_cmd, check=True, stdout=meta_file)
+            print(f"Metadata file {sra} downloaded to {sra_dir}")
+            obj["quantifications"][name]["sra"][sra]["meta_path"] = meta_path
+        except subprocess.CalledProcessError as e:
+            print(f"Error while downloading Metadata file {sra}: {e}")
+            return
 
-    # print(f"SRA prefetch Done for {sra_list}")
+    print(f"SRA prefetch Done for {sra_list}")
 
     
 
-    # ## Once downloaded, perform fastq-dump on the corresponding SRA files
-    # for sra in sra_list:
-    #     print(f"[DEBUG] Running fastq-dump for SRA accession: {sra}")
-    #     sra_path = f"./data/{obj_name}/{name}/{sra}/{sra}.sra"
-    #     fastqdump_path = f"./data/{obj_name}/{name}/{sra}/"
-    #     print(f"[DEBUG] SRA path: {sra_path}")
-    #     print(f"[DEBUG] Fastq output directory: {fastqdump_path}")
+    ## Once downloaded, perform fastq-dump on the corresponding SRA files
+    for sra in sra_list:
+        print(f"[DEBUG] Running fastq-dump for SRA accession: {sra}")
+        sra_path = f"./data/{obj_name}/{name}/{sra}/{sra}.sra"
+        fastqdump_path = f"./data/{obj_name}/{name}/{sra}/"
+        print(f"[DEBUG] SRA path: {sra_path}")
+        print(f"[DEBUG] Fastq output directory: {fastqdump_path}")
 
-    #     if paired:
-    #         fastqdump_cmd = [
-    #             "fastq-dump",
-    #             "--split-files",
-    #             "-O",
-    #             fastqdump_path,
-    #             sra_path
-    #         ]
-    #         print(f"[DEBUG] Running paired-end fastq-dump command: {' '.join(fastqdump_cmd)}")
-    #     else:
-    #         fastqdump_cmd = [
-    #             "fastq-dump",
-    #             "-O",
-    #             fastqdump_path,
-    #             sra_path
-    #         ]
-    #         print(f"[DEBUG] Running single-end fastq-dump command: {' '.join(fastqdump_cmd)}")
+        if paired:
+            fastqdump_cmd = [
+                "fastq-dump",
+                "--split-files",
+                "-O",
+                fastqdump_path,
+                sra_path
+            ]
+            print(f"[DEBUG] Running paired-end fastq-dump command: {' '.join(fastqdump_cmd)}")
+        else:
+            fastqdump_cmd = [
+                "fastq-dump",
+                "-O",
+                fastqdump_path,
+                sra_path
+            ]
+            print(f"[DEBUG] Running single-end fastq-dump command: {' '.join(fastqdump_cmd)}")
         
-    #     try:
-    #         # Uncomment the next line to enable fastq-dump execution
-    #         subprocess.run(fastqdump_cmd, check=True)
-    #         print(f"Fastq files generated for {sra}")
-    #     except subprocess.CalledProcessError as e:
-    #         print(f"Error while running fastq-dump for {sra}: {e}")
-    #         return
+        try:
+            # Uncomment the next line to enable fastq-dump execution
+            subprocess.run(fastqdump_cmd, check=True)
+            print(f"Fastq files generated for {sra}")
+        except subprocess.CalledProcessError as e:
+            print(f"Error while running fastq-dump for {sra}: {e}")
+            return
 
-    # print(f"Fastq dump Done for {sra_list}")
+    print(f"Fastq dump Done for {sra_list}")
 
     # ## Now, quantifying the fastq files using kallisto, different commands for paired and single-end reads
     print("Quantifying the fastq files using kallisto...")
@@ -726,38 +868,24 @@ def list_quantifications(args):
         print(f"  - Counts Path: {quant['counts_path']}")
     print("[DEBUG] list_quantifications function completed successfully.")
 
-def plot_gene_abundances(args):
-    obj_name = args.obj
-    quant_name = args.quantification_name
-    target_gene = args.gene
-    
-    ##debug output
-    print(f"Object Name: {obj_name}")
-    
-    config = None
-    with open('config.json', 'r') as f:
-        config = json.load(f)
-
-    obj = config['objects'][obj_name]
-    
-    # "path_to_gene_count"
-    path_to_gene_count = obj["quantifications"][quant_name]["path_to_gene_count"]
-
-    df = pd.read_csv(path_to_gene_count)
-    array_with_genes = df.values
-    
-    # Fetch the row where the first column matches the target string
-    gene_row = array_with_genes[array_with_genes[:, 0] == target_gene]
-    values = gene_row.iloc[0, 1:].values
-    labels = df.columns[1:]
-
-    plt.bar(labels, values)
 
 def plot_gene_abundances(args):
     obj_name = args.obj
     quant_name = args.quantification_name
     target_gene = args.gene
-    
+    named = args.named
+
+    if named:
+        #find the gene_id from the gene_name
+        gene_id = None
+        with open(f"./data/{obj_name}/{quant_name}/{obj_name}_gene_name_to_id.json") as f:
+            gene_name_to_id = json.load(f)
+            gene_id = gene_name_to_id.get(target_gene, None)
+        if gene_id is None:
+            print(f"Gene name '{target_gene}' not found in the gene name to ID mapping.")
+            return
+        else:
+            target_gene = gene_id
     # Debug output
     print(f"[DEBUG] Object Name: {obj_name}")
     config_path = 'config.json'
@@ -826,8 +954,8 @@ def plot_gene_abundances(args):
         plt.figure(figsize=(10, 6))
         plt.bar(labels, values, color='blue')
         plt.xlabel("Samples")
-        plt.ylabel("Expression Level")
-        plt.title(f"Gene Abundance for {target_gene}")
+        plt.ylabel("Expression Level (in TPM)")
+        plt.title(f"Gene Abundances for {target_gene}")
         plt.xticks(rotation=45, ha="right")
         plt.tight_layout()
         plt.show()
@@ -838,6 +966,218 @@ def plot_gene_abundances(args):
         print(f"[ERROR] Value error: {e}")
     except Exception as e:
         print(f"[ERROR] An unexpected error occurred during plotting: {e}")
+
+
+def generate_correlation_matrix(args):
+    try:
+        # Extract arguments
+        obj_name = args.obj
+        quant_name = args.quantification_name
+        gene_list_file = args.genes  # Path to gene list file, txt file with gene ids
+
+        # Debug output
+        print(f"Object Name: {obj_name}, Quantification Name: {quant_name}, Gene List File: {gene_list_file}")
+
+        # Load the config file
+        if not os.path.exists('config.json'):
+            raise FileNotFoundError("The config.json file was not found.")
+
+        with open('config.json', 'r') as f:
+            try:
+                config = json.load(f)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Error decoding config.json: {str(e)}")
+
+        # Retrieve object and path to gene count
+        if obj_name not in config.get('objects', {}):
+            raise KeyError(f"Object '{obj_name}' not found in config.json.")
+
+        obj = config['objects'][obj_name]
+        quantifications = obj.get('quantifications', {})
+
+        if quant_name not in quantifications:
+            raise KeyError(f"Quantification '{quant_name}' not found for object '{obj_name}' in config.json.")
+
+        path_to_gene_count = quantifications[quant_name].get("counts_path")
+        if not os.path.exists(path_to_gene_count):
+            raise FileNotFoundError(f"Gene count file '{path_to_gene_count}' not found.")
+
+        # Load gene count data
+        try:
+            gene_count_df = pd.read_csv(path_to_gene_count)
+        except Exception as e:
+            raise ValueError(f"Error reading gene count file '{path_to_gene_count}': {str(e)}")
+
+
+
+        gene_count_data = gene_count_df.values
+        
+        #debug output
+        print(f"[DEBUG] Gene count data shape: {gene_count_data.shape}")
+        print(f"[DEBUG] Gene count data head:\n{gene_count_data[:5]}")
+
+        # Load gene list file
+        if not os.path.exists(gene_list_file):
+            raise FileNotFoundError(f"Gene list file '{gene_list_file}' not found.")
+        
+        try:
+            gene_list_df = pd.read_csv(gene_list_file)
+        except Exception as e:
+            raise ValueError(f"Error reading gene list file '{gene_list_file}': {str(e)}")
+
+        gene_list = gene_list_df.values
+
+        # Filter gene count data based on the gene list
+        try:
+            array_with_genes = gene_count_data[np.isin(gene_count_data[:, 0], gene_list[:, 0])]
+            if array_with_genes.size == 0:
+                raise ValueError("No matching genes found between the gene count data and the provided gene list.")
+        except Exception as e:
+            raise ValueError(f"Error filtering gene count data: {str(e)}")
+
+        # Extract gene names (first column)
+        gene_names = array_with_genes[:, 0]
+
+        # Extract the numerical data (excluding the first column)
+        try:
+            data = array_with_genes[:, 1:].astype(float)
+        except ValueError:
+            raise ValueError("Non-numeric data found in the gene count file, unable to convert to float.")
+
+        # Create a DataFrame with gene names as index
+        df = pd.DataFrame(data, index=gene_names)
+
+        # Compute the correlation matrix
+        correlation_matrix = df.corr()
+
+        # Plot the heatmap
+        plt.figure(figsize=(10, 8))  # Adjust figure size for better readability
+        sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', 
+                    xticklabels=gene_names, yticklabels=gene_names, 
+                    annot_kws={"size": 8},  # Adjust font size
+                    cbar_kws={'label': 'Correlation coefficient'})  # Add colorbar label
+
+        # Rotate x-axis labels for better readability
+        plt.xticks(rotation=45, ha='right', fontsize=10)
+        plt.yticks(fontsize=10)
+
+        # Adjust layout
+        plt.tight_layout()
+
+        # Display the plot
+        plt.show()
+
+    except FileNotFoundError as fnf_error:
+        print(f"File error: {str(fnf_error)}")
+    except KeyError as key_error:
+        print(f"Key error: {str(key_error)}")
+    except ValueError as value_error:
+        print(f"Value error: {str(value_error)}")
+    except Exception as e:
+        print(f"An unexpected error occurred: {str(e)}")
+
+
+def name2id(args):
+    obj_name = args.obj
+    gene_name = args.gene_name
+    print(f"Converting gene name '{gene_name}' to gene ID for object '{obj_name}'...")
+    config = None
+    try:
+        with open('config.json', 'r') as f:
+            config = json.load(f)
+    except FileNotFoundError:
+        print("[ERROR] config.json not found. Please instantiate an organism first.")
+        return
+
+    if obj_name not in config['objects']:
+        print(f"[ERROR] Object '{obj_name}' not found in config.")
+        return
+
+    obj = config['objects'][obj_name]
+    print(f"[DEBUG] Loaded object '{obj_name}' from config.")
+
+    gene_id = None
+    gene_name_to_id_path = obj["gene_maps"]["gene_name_to_id"]
+    if not os.path.exists(gene_name_to_id_path):
+        print(f"[ERROR] Gene name to ID mapping file '{gene_name_to_id_path}' not found.")
+        return
+
+    try:
+        with open(gene_name_to_id_path, 'r') as f:
+            gene_name_to_id = json.load(f)
+            gene_id = gene_name_to_id.get(gene_name, None)
+    except Exception as e:
+        print(f"[ERROR] Error loading gene name to ID mapping: {e}")
+        return
+
+    if gene_id is None:
+        print(f"Gene name '{gene_name}' not found in the gene name to ID mapping.")
+    else:
+        print(f"Gene name '{gene_name}' maps to gene ID '{gene_id}'.")
+
+def gene2fasta(args):
+    obj_name = args.obj
+    gene_name = args.gene
+    named = args.named
+    gene_id = None
+    output_dir = args.output_dir
+    # print(f"Converting gene name '{gene_name}' to gene ID for object '{obj_name}'...")
+    config = None
+    try:
+        with open('config.json', 'r') as f:
+            config = json.load(f)
+    except FileNotFoundError:
+        print("[ERROR] config.json not found. Please instantiate an organism first.")
+        return
+
+    if obj_name not in config['objects']:
+        print(f"[ERROR] Object '{obj_name}' not found in config.")
+        return
+
+    obj = config['objects'][obj_name]
+    
+    print(f"[DEBUG] Loaded object '{obj_name}' from config.")
+
+    if named:
+        gene_name_to_id_path = obj["gene_maps"]["gene_name_to_id"]
+        if not os.path.exists(gene_name_to_id_path):
+            print(f"[ERROR] Gene name to ID mapping file '{gene_name_to_id_path}' not found.")
+            return
+
+        try:
+            with open(gene_name_to_id_path, 'r') as f:
+                gene_name_to_id = json.load(f)
+                gene_id = gene_name_to_id.get(gene_name, None)
+        except Exception as e:
+            print(f"[ERROR] Error loading gene name to ID mapping: {e}")
+            return
+
+        if gene_id is None:
+            print(f"Gene name '{gene_name}' not found in the gene name to ID mapping.")
+        else:
+            print(f"Gene name '{gene_name}' maps to gene ID '{gene_id}'.")
+        
+    else:
+        gene_id = gene_name
+    
+    outpath = os.path.join(output_dir, f"{gene_name}.fasta")
+    gtf_path = obj["paths"]["gtf"]
+    genome_path = obj["paths"]["genome"]    
+
+    # Ensure GTF and genome paths exist
+    if not os.path.exists(gtf_path):
+        print(f"[ERROR] GTF file '{gtf_path}' not found.")
+        return
+    if not os.path.exists(genome_path):
+        print(f"[ERROR] Genome file '{genome_path}' not found.")
+        return
+
+    # At this point, all inputs are valid, and you can call the function to extract the gene sequence
+    try:
+        extract_gene_sequence(gene_id, gtf_path, genome_path, outpath)
+    except Exception as e:
+        print(f"[ERROR] Failed to extract gene sequence: {e}")
+    
 
 
 def main():
@@ -878,11 +1218,26 @@ def main():
 
     parser_plot = subparsers.add_parser('plot_gene_abundances', help='Plot gene abundances')
     parser_plot.add_argument('--gene', required=False, help='Gene name')
-    # parser_plot.set_defaults(func=plot_gene_abundances)
+    parser_plot.add_argument('--named', required=False, action='store_true', help='Gene name is provided')
+    parser_plot.add_argument('--obj', required=True, help='Object name')
+    parser_plot.set_defaults(func=plot_gene_abundances)
 
-    # parser_corr = subparsers.add_parser('generate_correlation_matrix', help='Generate correlation matrix')
-    # parser_corr.add_argument('--genes', required=False, help='Comma-separated list of genes')
-    # parser_corr.set_defaults(func=generate_correlation_matrix)
+    parser_corr = subparsers.add_parser('generate_correlation_matrix', help='Generate correlation matrix')
+    parser_corr.add_argument('--genes', required=False, help='newline separated list of genes')
+    parser_corr.add_argument('--obj', required=True, help='Object name')
+    parser_corr.add_argument('--quantification_name', required=True, help='Quantification name')
+    parser_corr.set_defaults(func=generate_correlation_matrix)
+
+    parser_name2id = subparsers.add_parser('name2id', help='Convert gene name to gene ID')
+    parser_name2id.add_argument('--gene_name', required=True, help='Gene name')
+    parser_name2id.add_argument('--obj', required=True, help='Object name')
+    parser_name2id.set_defaults(func=name2id)
+
+    parser_gene2fasta = subparsers.add_parser('gene2fasta', help='Extract gene sequence to FASTA')
+    parser_gene2fasta.add_argument('--gene', required=True, help='Gene name or ID')
+    parser_gene2fasta.add_argument('--obj', required=True, help='Object name')
+    parser_gene2fasta.add_argument('--output_dir', required=True, help='Output directory')
+    parser_gene2fasta.add_argument('--named', required=False, action='store_true', help='Gene name is provided')
 
     # parser_deseq = subparsers.add_parser('deseq_analyse', help='Perform DESeq2 analysis')
     # parser_deseq.add_argument('--gene', required=False, help='Gene name')
