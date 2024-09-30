@@ -590,7 +590,7 @@ def quantize(args):
         sra_path = f"./data/{obj_name}/{name}/{sra}/{sra}.sra"
         fastqdump_path = f"./data/{obj_name}/{name}/{sra}/"
         print(f"[DEBUG] SRA path: {sra_path}")
-        print(f"[DEBUG] Fastq output directory: {fastqdump_path}")):
+        print(f"[DEBUG] Fastq output directory: {fastqdump_path}")
         if paired:
             if os.path.exists(f"{fastqdump_path}/{sra}_1.fastq") and os.path.exists(f"{fastqdump_path}/{sra}_2.fastq"):
                 print(f"[DEBUG] Paired-end fastq files already exist for {sra}. Skipping fastq-dump.")
@@ -1644,7 +1644,7 @@ def main():
     parser_remove = subparsers.add_parser('remove', help='Remove object')
     parser_remove.add_argument('--obj', required=True, help='Object name')
     parser_remove.set_defaults(func=remove_object)
-    
+
 
     args = parser.parse_args()
     print(f"[DEBUG] Parsed arguments: {args}")
