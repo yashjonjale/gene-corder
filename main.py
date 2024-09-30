@@ -508,6 +508,7 @@ def quantize(args):
     obj["quantifications"][name] = {
         "sra":{},
         "counts_path": None,
+        "type": "coexpression"
     }
     # else:
     #     print(f"[DEBUG] Quantification entry '{name}' already exists.")
@@ -1179,6 +1180,42 @@ def gene2fasta(args):
     except Exception as e:
         print(f"[ERROR] Failed to extract gene sequence: {e}")
     
+def list_objs(args):
+    print("Listing objects...")
+    config = None
+    try:
+        with open('config.json', 'r') as f:
+            config = json.load(f)
+    except FileNotFoundError:
+        print("[ERROR] config.json not found.")
+        return
+
+    if not config.get('objects'):
+        print("No objects found in config.json.")
+        return
+
+    print("Objects:")
+    for obj_name in config['objects']:
+        print(f"- {obj_name}")
+
+
+def quant_deseq(args):
+    #bioproject accession - SRPxxxxxx
+    #object name
+    #quantification name
+    
+    name = args.quantification_name
+    obj_name = args.obj
+    sra_list = args.srp
+    paired = args.paired
+
+
+    
+
+
+
+
+
 
 
 def main():
@@ -1218,14 +1255,14 @@ def main():
     parser_list_quant.set_defaults(func=list_quantifications)
 
     parser_plot = subparsers.add_parser('plot_gene_abundances', help='Plot gene abundances')
-    parser_plot.add_argument('--gene', required=False, help='Gene name')
+    parser_plot.add_argument('--gene', required=True, help='Gene name')
     parser_plot.add_argument('--named', required=False, action='store_true', help='Gene name is provided')
     parser_plot.add_argument('--obj', required=True, help='Object name')
     parser_plot.add_argument('--quantification_name', required=True, help='Quantification name')
     parser_plot.set_defaults(func=plot_gene_abundances)
 
     parser_corr = subparsers.add_parser('generate_correlation_matrix', help='Generate correlation matrix')
-    parser_corr.add_argument('--genes', required=False, help='newline separated list of genes')
+    parser_corr.add_argument('--genes', required=True, help='newline separated list of genes')
     parser_corr.add_argument('--obj', required=True, help='Object name')
     parser_corr.add_argument('--quantification_name', required=True, help='Quantification name')
     parser_corr.set_defaults(func=generate_correlation_matrix)
@@ -1240,6 +1277,12 @@ def main():
     parser_gene2fasta.add_argument('--obj', required=True, help='Object name')
     parser_gene2fasta.add_argument('--output_dir', required=True, help='Output directory')
     parser_gene2fasta.add_argument('--named', required=False, action='store_true', help='Gene name is provided')
+
+    parser_gene2fasta.set_defaults(func=gene2fasta)
+
+    parser_list_objs = subparsers.add_parser('list_objs', help='List objects')
+    parser_list_objs.set_defaults(func=list_objs)
+
 
     # parser_deseq = subparsers.add_parser('deseq_analyse', help='Perform DESeq2 analysis')
     # parser_deseq.add_argument('--gene', required=False, help='Gene name')
