@@ -15,6 +15,19 @@ import pandas as pd
 import pyranges as pr
 import os
 
+def create_gene_maps(gtf_file):
+    # Load GTF file into a PyRanges object
+    gr = pr.read_gtf(gtf_file)
+    
+    # Select only rows where both 'gene_id' and 'gene_name' exist
+    df = gr.df[['gene_id', 'gene_name']].drop_duplicates()
+    
+    # Create dictionaries for gene_id to gene_name and vice versa
+    gene_id_to_name = dict(zip(df['gene_id'], df['gene_name']))
+    gene_name_to_id = dict(zip(df['gene_name'], df['gene_id']))
+    
+    return gene_id_to_name, gene_name_to_id
+
 def map_gene_ids_to_names(gtf_file, gene_counts_df):
     """
     Maps gene IDs to gene names using a GTF file and updates a gene counts DataFrame.
@@ -638,6 +651,9 @@ def quantize(args):
 
         # Convert the numpy array result.X to a pandas DataFrame
         gene_counts_df = pd.DataFrame(result.X, index=result.obs_names, columns=result.var_names)
+
+        print(f"[DEBUG] result,obs_names: {result.obs_names}")
+
         print(f"[DEBUG] Gene counts DataFrame shape: {gene_counts_df.shape}")
         print(f"[DEBUG] Gene counts DataFrame head:\n{gene_counts_df.head()}")
         #columns names are 
