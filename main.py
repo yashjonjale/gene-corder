@@ -643,7 +643,12 @@ def quantize(args):
         #columns names are 
         print(f"[DEBUG] Gene counts DataFrame columns:\n{gene_counts_df.columns}")
         # Transpose to make genes as columns
-        gene_counts_df.T.to_csv(gene_count_csv)
+        gngdf = gene_counts_df.T
+        print(f"[DEBUG] Gene counts DataFrame shape after transposing: {gngdf.shape}")
+        print(f"[DEBUG] Gene counts DataFrame head after transposing:\n{gngdf.head()}")
+        print(f"[DEBUG] Gene counts DataFrame columns after transposing:\n{gngdf.columns}") 
+        # Save the gene counts matrix to a CSV file
+        gngdf.to_csv(gene_count_csv)
 
         print(f"[DEBUG] Gene counts saved to {gene_count_csv}")
 
