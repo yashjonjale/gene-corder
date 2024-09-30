@@ -1058,7 +1058,7 @@ def generate_correlation_matrix(args):
             raise ValueError(f"Error filtering gene count data: {str(e)}")
 
         # Extract gene names (first column)
-        gene_names = [index for index in gene_list if index in df.index]
+        gene_names = [index for index in gene_list if index in gene_count_df.index]
        
         # Create a DataFrame with gene names as index
         df = new_df
