@@ -16,7 +16,9 @@ import pyranges as pr
 import os
 from pyfaidx import Fasta
 from Bio import SeqIO
-
+from pydeseq2.dds import DeseqDataSet
+from pydeseq2.default_inference import DefaultInference
+from pydeseq2.ds import DeseqStats
 
 
 def map_gene_ids_to_names(gtf_file, gene_counts_df):
@@ -802,20 +804,23 @@ def quantize(args):
 
         # Convert the numpy array result.X to a pandas DataFrame
         gene_counts_df = pd.DataFrame(result.X, index=result.obs_names, columns=result.var_names)
+        dds = DeseqDataSet(counts = gene_counts_df.T, metadata = pd.DataFrame({'condition': gene_counts_df.columns}, index = gene_counts_df.columns))
+        dds.fit_size_factors()
+        gngdf = pd.DataFrame(dds.layers["normed_counts"].T, index = gene_counts_df.index, columns = gene_counts_df.columns)
 
-        print(f"[DEBUG] result,obs_names: {result.obs_names}")
+        # print(f"[DEBUG] result,obs_names: {result.obs_names}")
 
-        print(f"[DEBUG] Gene counts DataFrame shape: {gene_counts_df.shape}")
-        print(f"[DEBUG] Gene counts DataFrame head:\n{gene_counts_df.head()}")
-        #columns names are 
-        print(f"[DEBUG] Gene counts DataFrame columns:\n{gene_counts_df.columns}")
-        # Transpose to make genes as columns
-        gngdf = gene_counts_df.T
-        print(f"[DEBUG] Gene counts DataFrame shape after transposing: {gngdf.shape}")
-        print(f"[DEBUG] Gene counts DataFrame head after transposing:\n{gngdf.head()}")
-        print(f"[DEBUG] Gene counts DataFrame columns after transposing:\n{gngdf.columns}") 
+        # print(f"[DEBUG] Gene counts DataFrame shape: {gene_counts_df.shape}")
+        # print(f"[DEBUG] Gene counts DataFrame head:\n{gene_counts_df.head()}")
+        # #columns names are 
+        # print(f"[DEBUG] Gene counts DataFrame columns:\n{gene_counts_df.columns}")
+        # # Transpose to make genes as columns
+        # # gngdf = gene_counts_df.T
+        # print(f"[DEBUG] Gene counts DataFrame shape after transposing: {gngdf.shape}")
+        # print(f"[DEBUG] Gene counts DataFrame head after transposing:\n{gngdf.head()}")
+        # print(f"[DEBUG] Gene counts DataFrame columns after transposing:\n{gngdf.columns}") 
         # Save the gene counts matrix to a CSV file
-        gngdf.to_csv(gene_count_csv)
+        gngdf.to_csv(gene_count_csv, index=True)
 
         print(f"[DEBUG] Gene counts saved to {gene_count_csv}")
 
@@ -875,6 +880,7 @@ def plot_gene_abundances(args):
     quant_name = args.quantification_name
     target_gene = args.gene
     named = args.named
+    output = args.output
 
     if named:
         #find the gene_id from the gene_name
@@ -919,12 +925,12 @@ def plot_gene_abundances(args):
     # Step 3: Load gene counts
     try:
         print(f"[DEBUG] Loading gene counts from '{path_to_gene_count}'")
-        df = pd.read_csv(path_to_gene_count)
+        df = pd.read_csv(path_to_gene_count, index_col=0)
         if df.empty:
             raise ValueError(f"The gene counts file '{path_to_gene_count}' is empty.")
         print(f"OK")    
         # Ensure the target gene exists in the dataframe
-        if target_gene not in df.iloc[:, 0].values:
+        if target_gene not in df.index:
             raise ValueError(f"Target gene '{target_gene}' not found in gene counts file.")
         
     except pd.errors.EmptyDataError:
@@ -940,17 +946,17 @@ def plot_gene_abundances(args):
     # Step 4: Extract the gene row and plot data
     try:
         # Convert the dataframe to numpy for fast lookup
-        array_with_genes = df.values
+        # array_with_genes = df.values
         
         # Fetch the row where the first column matches the target gene
-        gene_row = array_with_genes[array_with_genes[:, 0] == target_gene]
+        gene_row = df.loc[target_gene].values
         
         if gene_row.size == 0:
             raise ValueError(f"Gene '{target_gene}' not found in the gene counts file.")
         
         # Extract the gene's expression values across samples
-        values = gene_row[0, 1:].astype(float)  # Assuming gene expression values are numeric
-        labels = df.columns[1:]  # Sample names are in the columns
+        values = gene_row.astype(float)  # Assuming gene expression values are numeric
+        labels = df.columns[:].tolist()  # Sample names are in the columns
         
         # Step 5: Plot the gene abundances
         plt.figure(figsize=(10, 6))
@@ -960,7 +966,7 @@ def plot_gene_abundances(args):
         plt.title(f"Gene Abundances for {target_gene}")
         plt.xticks(rotation=45, ha="right")
         plt.tight_layout()
-        plt.savefig("output.png")
+        plt.savefig(output)
 
     except IndexError as e:
         print(f"[ERROR] Index error occurred while processing gene row: {e}")
@@ -976,6 +982,7 @@ def generate_correlation_matrix(args):
         obj_name = args.obj
         quant_name = args.quantification_name
         gene_list_file = args.genes  # Path to gene list file, txt file with gene ids
+        output_dir = args.output_dir
 
         # Debug output
         print(f"Object Name: {obj_name}, Quantification Name: {quant_name}, Gene List File: {gene_list_file}")
@@ -1006,51 +1013,49 @@ def generate_correlation_matrix(args):
 
         # Load gene count data
         try:
-            gene_count_df = pd.read_csv(path_to_gene_count)
+            gene_count_df = pd.read_csv(path_to_gene_count,index_col=0)
         except Exception as e:
             raise ValueError(f"Error reading gene count file '{path_to_gene_count}': {str(e)}")
 
 
 
-        gene_count_data = gene_count_df.values
+        # gene_count_data = gene_count_df.values
         
         #debug output
-        print(f"[DEBUG] Gene count data shape: {gene_count_data.shape}")
-        print(f"[DEBUG] Gene count data head:\n{gene_count_data[:5]}")
+        # print(f"[DEBUG] Gene count data shape: {gene_count_data.shape}")
+        # print(f"[DEBUG] Gene count data head:\n{gene_count_data[:5]}")
 
         # Load gene list file
         if not os.path.exists(gene_list_file):
             raise FileNotFoundError(f"Gene list file '{gene_list_file}' not found.")
         
         try:
-            gene_list_df = pd.read_csv(gene_list_file)
+            gene_list_df = pd.read_csv(gene_list_file,header=None)
         except Exception as e:
             raise ValueError(f"Error reading gene list file '{gene_list_file}': {str(e)}")
 
-        gene_list = gene_list_df.values
+        gene_list = gene_list_df[0].tolist()
 
         # Filter gene count data based on the gene list
         try:
-            array_with_genes = gene_count_data[np.isin(gene_count_data[:, 0], gene_list[:, 0])]
-            if array_with_genes.size == 0:
+            # array_with_genes = gene_count_data[np.isin(gene_count_df[:, 0], gene_count_df.index)]
+            new_df = gene_count_df.loc[[index for index in gene_list if index in gene_count_df.index]] 
+            if new_df.size == 0:
                 raise ValueError("No matching genes found between the gene count data and the provided gene list.")
         except Exception as e:
             raise ValueError(f"Error filtering gene count data: {str(e)}")
 
         # Extract gene names (first column)
-        gene_names = array_with_genes[:, 0]
-
-        # Extract the numerical data (excluding the first column)
-        try:
-            data = array_with_genes[:, 1:].astype(float)
-        except ValueError:
-            raise ValueError("Non-numeric data found in the gene count file, unable to convert to float.")
-
+        gene_names = [index for index in gene_list if index in df.index]
+       
         # Create a DataFrame with gene names as index
-        df = pd.DataFrame(data, index=gene_names)
+        df = new_df
 
         # Compute the correlation matrix
-        correlation_matrix = df.corr()
+        correlation_matrix = df.T.corr()
+
+        #save the correlation matrix in the the output file
+        correlation_matrix.to_csv(os.path.join(output_dir, "correlation_matrix.csv"))
 
         # Plot the heatmap
         plt.figure(figsize=(10, 8))  # Adjust figure size for better readability
@@ -1067,7 +1072,7 @@ def generate_correlation_matrix(args):
         plt.tight_layout()
 
         # Display the plot
-        plt.savefig("output.png")
+        plt.savefig(os.path.join(output_dir, "correlation_heatmap.png"))
 
     except FileNotFoundError as fnf_error:
         print(f"File error: {str(fnf_error)}")
@@ -1206,11 +1211,80 @@ def quant_deseq(args):
     
     name = args.quantification_name
     obj_name = args.obj
-    sra_list = args.srp
+    srp = args.srp
     paired = args.paired
+    output_dir = args.output_dir
+
+    # Load the config file
+    config_path = 'config.json'
+    if not os.path.exists(config_path):
+        print(f"[ERROR] Config file '{config_path}' not found.")
+        return
+    
+    try:
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+    except Exception as e:
+        print(f"[ERROR] Error loading config file: {e}")
+        return
+    
+    # Check if the object exists in the config
+    if obj_name not in config['objects']:
+        print(f"[ERROR] Object '{obj_name}' not found in config.")
+        return
+    
+    obj = config['objects'][obj_name]
+    print(f"[DEBUG] Loaded object '{obj_name}' from config.")
+
+
+    # check if the quantifications key exists in the object
+    if "quantifications" not in obj:
+        print(f"[ERROR] No quantifications found for object '{obj_name}'.")
+        return
+    
+    # create new quantification entry, and also initialize the corresponding dictionary
+
+    if name in obj["quantifications"]:
+        print(f"[WARNING] Quantification '{name}' already exists for object '{obj_name}'.")
+        # return
+    
+    obj["quantifications"][name] = {
+        "sra": {},
+        "srp": srp,
+        "paired": paired,
+        "type" : "deseq",
+        "output_dir": output_dir
+
+    }
+    quant_path = f"./data/{obj_name}/{name}/"
+    quant_path = os.path.abspath(quant_path)
+    meta_path = os.path.join(quant_path, f"{srp}_metadata.tsv")
+    meta_cmd = [
+        "pysradb",
+        "metadata",
+        "--detailed",
+        srp
+    ]
+
+    print(f"[DEBUG] Running metadata command: {' '.join(meta_cmd)}")
+    try:
+        # subprocess.run(meta_cmd, check=True)
+        with open(meta_path, "w") as meta_file:
+            subprocess.run(meta_cmd, check=True, stdout=meta_file)
+        print(f"Metadata file {srp} downloaded to {quant_path}")
+        obj["quantifications"][name]["meta_path"] = meta_path
+    except subprocess.CalledProcessError as e:
+        print(f"Error while downloading Metadata file {srp}: {e}")
+        return
+
+
 
 
     
+
+
+
+
 
 
 
@@ -1259,12 +1333,14 @@ def main():
     parser_plot.add_argument('--named', required=False, action='store_true', help='Gene name is provided')
     parser_plot.add_argument('--obj', required=True, help='Object name')
     parser_plot.add_argument('--quantification_name', required=True, help='Quantification name')
+    parser_plot.add_argument('--saveto', required=True, help='Output file path')
     parser_plot.set_defaults(func=plot_gene_abundances)
 
     parser_corr = subparsers.add_parser('generate_correlation_matrix', help='Generate correlation matrix')
     parser_corr.add_argument('--genes', required=True, help='newline separated list of genes')
     parser_corr.add_argument('--obj', required=True, help='Object name')
     parser_corr.add_argument('--quantification_name', required=True, help='Quantification name')
+    parser_corr.add_argument('--output_dir', required=True, help='Output directory')
     parser_corr.set_defaults(func=generate_correlation_matrix)
 
     parser_name2id = subparsers.add_parser('name2id', help='Convert gene name to gene ID')
@@ -1284,9 +1360,12 @@ def main():
     parser_list_objs.set_defaults(func=list_objs)
 
 
-    # parser_deseq = subparsers.add_parser('deseq_analyse', help='Perform DESeq2 analysis')
-    # parser_deseq.add_argument('--gene', required=False, help='Gene name')
-    # parser_deseq.set_defaults(func=deseq_analyse)
+    parser_deseq = subparsers.add_parser('deseq_analyse', help='Perform DESeq2 analysis')
+    parser_deseq.add_argument('--obj', required=True, help='Object name')
+    parser_deseq.add_argument('--quantification_name', required=True, help='Quantification name')
+    parser_deseq.add_argument('--srp', required=True, help='Comma-separated SRA accession codes')
+    parser_deseq.add_argument('--paired', required=False, action='store_true', help='Paired-end reads')
+    parser_deseq.set_defaults(func=quant_deseq)
 
     args = parser.parse_args()
     print(f"[DEBUG] Parsed arguments: {args}")
