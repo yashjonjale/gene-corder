@@ -1353,6 +1353,10 @@ def quant_deseq(args):
         print(f"[DEBUG] Fastq output directory: {fastqdump_path}")
 
         if paired:
+            if os.path.exists(f"{fastqdump_path}/{sra}_1.fastq") and os.path.exists(f"{fastqdump_path}/{sra}_2.fastq"):
+                print(f"[DEBUG] Paired-end fastq files already exist for {sra}. Skipping fastq-dump.")
+                continue
+
             fastqdump_cmd = [
                 "fastq-dump",
                 "--split-files",
@@ -1362,6 +1366,9 @@ def quant_deseq(args):
             ]
             print(f"[DEBUG] Running paired-end fastq-dump command: {' '.join(fastqdump_cmd)}")
         else:
+            if os.path.exists(f"{fastqdump_path}/{sra}.fastq"):
+                print(f"[DEBUG] Single-end fastq file already exists for {sra}. Skipping fastq-dump.")
+                continue
             fastqdump_cmd = [
                 "fastq-dump",
                 "-O",
@@ -1463,8 +1470,6 @@ def quant_deseq(args):
                length_column = "eff_length", abundance_column = "tpm")
         result.X = result.X.round().astype(int)
         # result.obs = pd.DataFrame(index=result.obs_names)
-        result.obs["type"] = "type-none"
-        result.obs["replicate"] = "replicate-none"
 
     except Exception as e:
         print(f"[ERROR] Tximport Failure: {e}")
@@ -1472,58 +1477,136 @@ def quant_deseq(args):
     
 
 
-    metadata["type"] = metadata["library_name"].str.split("-", n=1).str[0]
-    metadata["type"] = pd.Categorical(metadata["type"], categories=metadata["type"].unique())
-    metadata["replicate"] = metadata["library_name"].str.split("-", n=1).str[1]
+    # metadata["type"] = metadata["library_name"].str.split("-", n=1).str[0]
+    # metadata["type"] = pd.Categorical(metadata["type"], categories=metadata["type"].unique())
+    # metadata["replicate"] = metadata["library_name"].str.split("-", n=1).str[1]
 
-    result.obs["type"] = metadata["type"]
-    result.obs["replicate"] = metadata["replicate"]
+    # result.obs["type"] = metadata["type"]
+    # result.obs["replicate"] = metadata["replicate"]
 
-    gtf = pr.read_gtf(gtf_path)
-    gtf_gene = gtf.df[gtf.df["Feature"] == "gene"][["gene_id", "gene_name"]].drop_duplicates()
-    gtf_gene["gene_name"].fillna(gtf_gene["gene_id"], inplace=True)
-    gtf_gene.set_index("gene_id", inplace=True)
-
-
-    common_genes = result.var.index.intersection(gtf_gene.index)
-
-    result = result[:, result.var.index.isin(common_genes)]
-    result.obs = metadata
-    #.loc[result.obs.index]
-
-    dds = DeseqDataSet(adata=result, design_factors="type",     refit_cooks=True,
-                        inference=DefaultInference(n_cpus=8),
-                        quiet=True,
-                    )
-    dds.deseq2()
-
-    df = pd.DataFrame(dds.layers["normed_counts"].T, index=result.obs_names, columns=result.var_names)
-    #save to csv in the output directory
-    df.to_csv(os.path.join(output_dir, "normed_counts.csv"))
-    #vsd = vst(dds)
-    #vsd_data = vsd.transform()
-    dds.vst(use_design=True)
-
-    df = dds.layers["vst_counts"]
-    pca_vsd =  PCA(n_components=2)
-    pca_vsd.fit(df)
-    pca_vsd = pca_vsd.transform(df)
-
-    plt.figure(figsize=(10, 5))
-    plt.subplot(1, 2, 1)
-    sns.scatterplot(x=pca_vsd[:, 0], y=pca_vsd[:, 1], hue=metadata["type"])
-    plt.title("PCA (VST) by Type")
-
-    plt.subplot(1, 2, 2)
-    sns.scatterplot(x=pca_vsd[:, 0], y=pca_vsd[:, 1], hue=metadata["replicate"])
-    plt.title("PCA (VST) by Replicate")
-
-    plt.tight_layout()
-    plt.show()
-
-    plt.savefig(os.path.join(output_dir, "pca_vst.png"))
+    # gtf = pr.read_gtf(gtf_path)
+    # gtf_gene = gtf.df[gtf.df["Feature"] == "gene"][["gene_id", "gene_name"]].drop_duplicates()
+    # gtf_gene["gene_name"].fillna(gtf_gene["gene_id"], inplace=True)
+    # gtf_gene.set_index("gene_id", inplace=True)
 
 
+    # common_genes = result.var.index.intersection(gtf_gene.index)
+
+    # result = result[:, result.var.index.isin(common_genes)]
+    # result.obs = metadata
+    # #.loc[result.obs.index]
+
+    # dds = DeseqDataSet(adata=result, design_factors="type",     refit_cooks=True,
+    #                     inference=DefaultInference(n_cpus=8),
+    #                     quiet=True,
+    #                 )
+    # dds.deseq2()
+
+    # df = pd.DataFrame(dds.layers["normed_counts"].T, index=result.obs_names, columns=result.var_names)
+    # #save to csv in the output directory
+    # df.to_csv(os.path.join(output_dir, "normed_counts.csv"))
+    # #vsd = vst(dds)
+    # #vsd_data = vsd.transform()
+    # dds.vst(use_design=True)
+
+    # df = dds.layers["vst_counts"]
+    # pca_vsd =  PCA(n_components=2)
+    # pca_vsd.fit(df)
+    # pca_vsd = pca_vsd.transform(df)
+
+    # plt.figure(figsize=(10, 5))
+    # plt.subplot(1, 2, 1)
+    # sns.scatterplot(x=pca_vsd[:, 0], y=pca_vsd[:, 1], hue=metadata["type"])
+    # plt.title("PCA (VST) by Type")
+
+    # plt.subplot(1, 2, 2)
+    # sns.scatterplot(x=pca_vsd[:, 0], y=pca_vsd[:, 1], hue=metadata["replicate"])
+    # plt.title("PCA (VST) by Replicate")
+
+    # plt.tight_layout()
+    # plt.show()
+
+    # plt.savefig(os.path.join(output_dir, "pca_vst.png"))
+
+    try:
+        metadata["type"] = metadata["library_name"].str.split("-", n=1).str[0]
+        metadata["type"] = pd.Categorical(metadata["type"], categories=metadata["type"].unique())
+        metadata["replicate"] = metadata["library_name"].str.split("-", n=1).str[1]
+
+        result.obs["type"] = metadata["type"]
+        result.obs["replicate"] = metadata["replicate"]
+    except KeyError as e:
+        print(f"KeyError encountered while processing metadata: {e}")
+    except AttributeError as e:
+        print(f"AttributeError encountered: {e}")
+    except Exception as e:
+        print(f"Unexpected error while processing metadata: {e}")
+
+    try:
+        gtf = pr.read_gtf(gtf_path)
+        gtf_gene = gtf.df[gtf.df["Feature"] == "gene"][["gene_id", "gene_name"]].drop_duplicates()
+        gtf_gene["gene_name"].fillna(gtf_gene["gene_id"], inplace=True)
+        gtf_gene.set_index("gene_id", inplace=True)
+    except FileNotFoundError as e:
+        print(f"GTf file not found: {e}")
+    except Exception as e:
+        print(f"Unexpected error while reading and processing the GTF file: {e}")
+
+    try:
+        common_genes = result.var.index.intersection(gtf_gene.index)
+        result = result[:, result.var.index.isin(common_genes)]
+        result.obs = metadata
+    except KeyError as e:
+        print(f"KeyError encountered while intersecting genes: {e}")
+    except Exception as e:
+        print(f"Unexpected error while processing common genes: {e}")
+
+    try:
+        dds = DeseqDataSet(
+            adata=result,
+            design_factors="type",
+            refit_cooks=True,
+            inference=DefaultInference(n_cpus=8),
+            quiet=True
+        )
+        dds.deseq2()
+    except Exception as e:
+        print(f"Error in DESeq2 analysis: {e}")
+
+    # try:
+    #     df = pd.DataFrame(dds.layers["normed_counts"].T, index=result.obs_names, columns=result.var_names)
+    #     df.to_csv(os.path.join(output_dir, "normed_counts.csv"))
+    # except FileNotFoundError as e:
+    #     print(f"Output directory not found: {e}")
+    # except Exception as e:
+    #     print(f"Error while saving normed counts to CSV: {e}")
+
+    try:
+        dds.vst(use_design=True)
+        df = dds.layers["vst_counts"]
+        pca_vsd = PCA(n_components=2)
+        pca_vsd.fit(df)
+        pca_vsd = pca_vsd.transform(df)
+    except Exception as e:
+        print(f"Error during VST transformation or PCA: {e}")
+
+    try:
+        plt.figure(figsize=(10, 5))
+        plt.subplot(1, 2, 1)
+        sns.scatterplot(x=pca_vsd[:, 0], y=pca_vsd[:, 1], hue=metadata["type"])
+        plt.title("PCA (VST) by Type")
+
+        plt.subplot(1, 2, 2)
+        sns.scatterplot(x=pca_vsd[:, 0], y=pca_vsd[:, 1], hue=metadata["replicate"])
+        plt.title("PCA (VST) by Replicate")
+
+        plt.tight_layout()
+        plt.show()
+        plt.savefig(os.path.join(output_dir, "pca_vst.png"))
+    except FileNotFoundError as e:
+        print(f"Error: Output directory not found: {e}")
+    except Exception as e:
+        print(f"Error while generating or saving PCA plot: {e}")
 
 
 
@@ -1581,9 +1664,9 @@ def main():
     subparsers = parser.add_subparsers(dest='command')
 
     # Instantiate
-    parser_instantiate = subparsers.add_parser('instantiate', help='Instantiate an object for an organism')
+    parser_instantiate = subparsers.add_parser('instantiate', help='Instantiate an object of an organism, providing paths to the genome, transcriptome, and annotation files, ')
     parser_instantiate.add_argument('--organism', required=True, help='Organism name')
-    parser_instantiate.add_argument('--name', required=True, help='Name for this quantification')
+    parser_instantiate.add_argument('--name', required=True, help='Name for this quantification instance')
     parser_instantiate.add_argument('--desc', required=False, help='Description for this quantification')
     parser_instantiate.add_argument('--transcriptome_path', required=False, help='Path to transcriptome file in fasta format')
     parser_instantiate.add_argument('--genome_path', required=True, help='Path to genome file in fasta format')
