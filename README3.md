@@ -11,6 +11,7 @@
 - [Commands and Getting Started](#commands-and-getting-started)
 - [Examples](#example-workflows)
 - [Additional Note](#additional-notes)
+- [Troubleshooting](#troubleshooting)
 - [Support and Contributions](#support-and-contributions)
 - [License](#license)
 
@@ -47,6 +48,7 @@ The **GENECorder** is an open-source, easy-to-use tool designed to help research
 | **Biopython**   | Biological computation and sequence manipulation     | Provides utilities for biological data processing |
 | **Pydeseq2**    | Differential expression analysis using DESeq2        | Calculates gene expression differences            |
 | **PyTximport**    | Converts transcript abundances to gene-level counts  | Handles conversion of quantified transcripts      |
+| **PyRanges**    | ***  | ***      |
 
 
 ---
@@ -368,3 +370,19 @@ python main.py remove --obj human_obj
 
 ---
 
+## Troubleshooting
+
+- **Config File Not Found:** Ensure you have run the `instantiate` command to create the initial configuration.
+- **File Not Found Errors:** Verify that all file paths provided are correct and accessible.
+- **Gene Not Found:** Ensure gene names or IDs are correct and present in the organism's annotation.
+- **Internet Connection:** Some commands require downloading data from NCBI SRA; ensure you have internet access.
+
+---
+
+## Support and Contributions
+
+For issues, questions, or contributions, please refer to the project's GitHub repository or contact the maintainer.
+
+---
+
+*This documentation provides an overview of GENECorder's capabilities and usage. For detailed information, please consult the source code or reach out to the development team.*
