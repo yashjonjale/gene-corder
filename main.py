@@ -615,6 +615,14 @@ def quantize(args):
         result.var["gene_name"] = gtf_gene.loc[result.var.index, "gene_name"]
         result.var.set_index("gene_name", inplace=True)
 
+        file_to_sra_mapping = dict(zip(abundances_tsv_paths, sra_list))
+
+        # Replace result.obs_names with the SRA codes
+        result.obs_names = result.obs_names.map(lambda x: file_to_sra_mapping.get(x, x))  # Replace path with SRA code
+
+        # Print the updated result.obs_names for debugging
+        print(f"[DEBUG] result.obs_names (after replacing with SRA codes): {result.obs_names}")
+
     except Exception as e:
         print(f"[ERROR] Error in extracting gene names: {e}")
         return
