@@ -921,9 +921,9 @@ def plot_gene_abundances(args):
         df = pd.read_csv(path_to_gene_count)
         if df.empty:
             raise ValueError(f"The gene counts file '{path_to_gene_count}' is empty.")
-        
+        print(f"OK")    
         # Ensure the target gene exists in the dataframe
-        if target_gene not in df.iloc[:, 2].values:
+        if target_gene not in df.iloc[:, 0].values:
             raise ValueError(f"Target gene '{target_gene}' not found in gene counts file.")
         
     except pd.errors.EmptyDataError:
@@ -959,7 +959,7 @@ def plot_gene_abundances(args):
         plt.title(f"Gene Abundances for {target_gene}")
         plt.xticks(rotation=45, ha="right")
         plt.tight_layout()
-        plt.show()
+        plt.savefig("output.png")
 
     except IndexError as e:
         print(f"[ERROR] Index error occurred while processing gene row: {e}")
