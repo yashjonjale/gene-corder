@@ -1066,7 +1066,7 @@ def generate_correlation_matrix(args):
         plt.tight_layout()
 
         # Display the plot
-        plt.show()
+        plt.savefig("output.png")
 
     except FileNotFoundError as fnf_error:
         print(f"File error: {str(fnf_error)}")
