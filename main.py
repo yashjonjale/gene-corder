@@ -1269,6 +1269,7 @@ def quant_deseq(args):
 
     }
     quant_path = f"./data/{obj_name}/{name}/"
+    os.makedirs(quant_path, exist_ok=True)
     quant_path = os.path.abspath(quant_path)
     meta_path = os.path.join(quant_path, f"{srp}_metadata.tsv")
     meta_cmd = [
