@@ -638,7 +638,10 @@ def quantize(args):
 
         # Convert the numpy array result.X to a pandas DataFrame
         gene_counts_df = pd.DataFrame(result.X, index=result.obs_names, columns=result.var_names)
-
+        print(f"[DEBUG] Gene counts DataFrame shape: {gene_counts_df.shape}")
+        print(f"[DEBUG] Gene counts DataFrame head:\n{gene_counts_df.head()}")
+        #columns names are 
+        print(f"[DEBUG] Gene counts DataFrame columns:\n{gene_counts_df.columns}")
         # Transpose to make genes as columns
         gene_counts_df.T.to_csv(gene_count_csv)
 
