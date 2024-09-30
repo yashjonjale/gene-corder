@@ -814,7 +814,7 @@ def quantize(args):
         print(f"[DEBUG] Gene counts DataFrame shape: {gene_counts_df.shape}")
         print(f"[DEBUG] Gene counts DataFrame head:\n{gene_counts_df.head()}")
         print(f"[DEBUG] Gene counts DataFrame columns:\n{gene_counts_df.columns}")
-        print(f"[DEBUG] Gene counts DataFrame index:\n{gene_counts_df.index}")oo
+        print(f"[DEBUG] Gene counts DataFrame index:\n{gene_counts_df.index}")
 
         dds = DeseqDataSet(counts = gene_counts_df, metadata = pd.DataFrame({'condition': gene_counts_df.columns}, index = gene_counts_df.index))
         dds.fit_size_factors()
