@@ -38,39 +38,38 @@ def map_gene_ids_to_names(gtf_file, gene_counts_df):
     # Step 1: Check if the GTF file exists
     if not os.path.exists(gtf_file):
         raise FileNotFoundError(f"GTF file '{gtf_file}' not found.")
-    
+
     # Step 2: Load the GTF file into a pyranges object
     try:
         gtf = pr.read_gtf(gtf_file)
     except Exception as e:
         raise RuntimeError(f"Error loading GTF file: {e}")
-    
+
     # Step 3: Extract gene_id and gene_name from GTF
     try:
-        gtf_genes = gtf[gtf.Feature == 'gene']
-        gtf_genes_df = gtf_genes.df[['gene_id', 'gene_name']].drop_duplicates()
+        gtf_genes = gtf[gtf.Feature == "gene"]
+        gtf_genes_df = gtf_genes.df[["gene_id", "gene_name"]].drop_duplicates()
 
         # Step 4: Create a dictionary to map gene_id to gene_name
-        gene_id_to_name = dict(zip(gtf_genes_df['gene_id'], gtf_genes_df['gene_name']))
+        gene_id_to_name = dict(zip(gtf_genes_df["gene_id"], gtf_genes_df["gene_name"]))
 
     except KeyError as e:
         raise ValueError(f"Required columns not found in the GTF file: {e}")
 
     # Step 5: Check if gene_id column exists in gene_counts_df
-    if 'gene_id' not in gene_counts_df.columns:
-        raise ValueError("The 'gene_id' column is missing from the gene counts dataframe.")
-    
+    if "gene_id" not in gene_counts_df.columns:
+        raise ValueError(
+            "The 'gene_id' column is missing from the gene counts dataframe."
+        )
+
     # Step 6: Map gene_id to gene_name in the gene counts DataFrame
     try:
-        gene_counts_df['gene_name'] = gene_counts_df['gene_id'].map(gene_id_to_name)
+        gene_counts_df["gene_name"] = gene_counts_df["gene_id"].map(gene_id_to_name)
     except Exception as e:
         raise RuntimeError(f"Error mapping gene IDs to gene names: {e}")
-    
+
     # Step 7: Return the updated dataframe
     return gene_counts_df
-
-
-
 
 
 # 1. Extract Gene Sequence
@@ -80,19 +79,19 @@ def extract_gene_sequence(gene_id, gtf_file, genome_fa, output_fa_path):
         raise FileNotFoundError(f"GTF file '{gtf_file}' not found.")
     if not os.path.exists(genome_fa):
         raise FileNotFoundError(f"Genome FASTA file '{genome_fa}' not found.")
-    
+
     # Load the GTF file
     try:
         gr = pr.read_gtf(gtf_file)
     except Exception as e:
         raise ValueError(f"Error reading GTF file: {str(e)}")
-    
+
     # Filter for gene_name
     # gene_gtf = gr.df[gr.df['gene_name'] == gene_name]
-    gene_gtf = gr.df[gr.df['gene_id'] == gene_id]
+    gene_gtf = gr.df[gr.df["gene_id"] == gene_id]
     if gene_gtf.empty:
         raise ValueError(f"Gene '{gene_id}' not found in the GTF file.")
-    
+
     # Load the genome FASTA
     try:
         genome = Fasta(genome_fa)
@@ -105,27 +104,27 @@ def extract_gene_sequence(gene_id, gtf_file, genome_fa, output_fa_path):
     # Extract sequences based on coordinates
     try:
         for _, row in gene_gtf.iterrows():
-            chrom = row['Chromosome']
-            start = row['Start']
-            end = row['End']
-            strand = row['Strand']
-            
-            # Extract sequence
-            seq = genome[chrom][start-1:end]  # pyfaidx is 0-based
+            chrom = row["Chromosome"]
+            start = row["Start"]
+            end = row["End"]
+            strand = row["Strand"]
 
-            if strand == '-':
+            # Extract sequence
+            seq = genome[chrom][start - 1 : end]  # pyfaidx is 0-based
+
+            if strand == "-":
                 seq = seq.reverse.complement
 
             gene_sequence += str(seq)
     except Exception as e:
         raise ValueError(f"Error extracting sequence: {str(e)}")
-    
+
     # Write to a FASTA file
     try:
-        with open(output_fa_path, 'w') as f:
+        with open(output_fa_path, "w") as f:
             f.write(f">{gene_id}\n")
             for i in range(0, len(gene_sequence), 60):
-                f.write(gene_sequence[i:i+60] + "\n")
+                f.write(gene_sequence[i : i + 60] + "\n")
         print(f"Gene sequence for {gene_id} saved to {output_fa_path}")
     except Exception as e:
         raise IOError(f"Error writing to FASTA file: {str(e)}")
@@ -136,7 +135,7 @@ def create_gene_maps(gtf_file):
     # Error handling for file existence
     if not os.path.exists(gtf_file):
         raise FileNotFoundError(f"GTF file '{gtf_file}' not found.")
-    
+
     try:
         gr = pr.read_gtf(gtf_file)
     except Exception as e:
@@ -144,12 +143,12 @@ def create_gene_maps(gtf_file):
 
     # Filter and create mappings
     try:
-        df = gr.df[['gene_id', 'gene_name']].drop_duplicates()
-        gene_id_to_name = dict(zip(df['gene_id'], df['gene_name']))
-        gene_name_to_id = dict(zip(df['gene_name'], df['gene_id']))
+        df = gr.df[["gene_id", "gene_name"]].drop_duplicates()
+        gene_id_to_name = dict(zip(df["gene_id"], df["gene_name"]))
+        gene_name_to_id = dict(zip(df["gene_name"], df["gene_id"]))
     except Exception as e:
         raise ValueError(f"Error processing GTF data: {str(e)}")
-    
+
     return gene_id_to_name, gene_name_to_id
 
 
@@ -162,7 +161,7 @@ def find_gene_by_sequence(input_fa, gtf_file, genome_fa):
         raise FileNotFoundError(f"GTF file '{gtf_file}' not found.")
     if not os.path.exists(genome_fa):
         raise FileNotFoundError(f"Genome FASTA file '{genome_fa}' not found.")
-    
+
     # Load the input sequence
     try:
         input_seq_record = list(SeqIO.parse(input_fa, "fasta"))
@@ -171,7 +170,7 @@ def find_gene_by_sequence(input_fa, gtf_file, genome_fa):
         input_sequence = str(input_seq_record[0].seq)
     except Exception as e:
         raise ValueError(f"Error reading input FASTA file: {str(e)}")
-    
+
     # Load GTF file
     try:
         gr = pr.read_gtf(gtf_file)
@@ -183,7 +182,7 @@ def find_gene_by_sequence(input_fa, gtf_file, genome_fa):
         genome = Fasta(genome_fa)
     except Exception as e:
         raise ValueError(f"Error loading genome FASTA file: {str(e)}")
-    
+
     # Dictionary to store gene sequences
     gene_sequences = {}
 
@@ -192,14 +191,14 @@ def find_gene_by_sequence(input_fa, gtf_file, genome_fa):
         for gene_name, gene_gtf in gr.df.groupby("gene_name"):
             gene_sequence = ""
             for _, row in gene_gtf.iterrows():
-                chrom = row['Chromosome']
-                start = row['Start']
-                end = row['End']
-                strand = row['Strand']
+                chrom = row["Chromosome"]
+                start = row["Start"]
+                end = row["End"]
+                strand = row["Strand"]
 
-                seq = genome[chrom][start-1:end]  # pyfaidx is 0-based
+                seq = genome[chrom][start - 1 : end]  # pyfaidx is 0-based
 
-                if strand == '-':
+                if strand == "-":
                     seq = seq.reverse.complement
 
                 gene_sequence += str(seq)
@@ -229,8 +228,21 @@ def process_gene_counts(obj, abundances_tsv_paths, obj_name, name):
     print(f"[DEBUG] t2g path: {t2g_path}")
 
     # Load the t2g (transcript-to-gene) map
-    t2g_df = pd.read_csv(t2g_path, sep="\t", header=None,
-                         names=["transcript_id", "gene_id", "gene_name", "transcript_name", "chrom", "start", "end", "strand"])
+    t2g_df = pd.read_csv(
+        t2g_path,
+        sep="\t",
+        header=None,
+        names=[
+            "transcript_id",
+            "gene_id",
+            "gene_name",
+            "transcript_name",
+            "chrom",
+            "start",
+            "end",
+            "strand",
+        ],
+    )
     t2g = t2g_df[["transcript_id", "gene_id"]]
 
     files = abundances_tsv_paths
@@ -239,7 +251,7 @@ def process_gene_counts(obj, abundances_tsv_paths, obj_name, name):
 
     try:
         # Use pytximport to aggregate transcript-level data to gene-level
-        result = tximport(files=files, transcript_gene_map=t2g, type='kallisto')
+        result = tximport(files=files, transcript_gene_map=t2g, type="kallisto")
         result = result.round().astype(int)  # Round counts and convert to integer
 
     except Exception as e:
@@ -248,19 +260,21 @@ def process_gene_counts(obj, abundances_tsv_paths, obj_name, name):
 
     # Extract the gene-level counts matrix and gene names
     print(f"[DEBUG] Extracting gene-level counts matrix and gene names")
-    
+
     # Step 1: Load GTF using pyranges
     gtf = pr.read_gtf(gtf_path)
-    
+
     # Step 2: Extract relevant gene_id and gene_name columns from the GTF file
-    gtf_gene = gtf.df[gtf.df["Feature"] == "gene"][["gene_id", "gene_name"]].drop_duplicates()
-    
+    gtf_gene = gtf.df[gtf.df["Feature"] == "gene"][
+        ["gene_id", "gene_name"]
+    ].drop_duplicates()
+
     # Step 3: Handle missing gene names by filling them with the gene_id
     gtf_gene["gene_name"].fillna(gtf_gene["gene_id"], inplace=True)
-    
+
     # Step 4: Set gene_id as the index for easy lookups
     gtf_gene.set_index("gene_id", inplace=True)
-    
+
     # Step 5: Find common genes between tximport result and GTF file
     common_genes = result.index.intersection(gtf_gene.index)
 
@@ -272,11 +286,11 @@ def process_gene_counts(obj, abundances_tsv_paths, obj_name, name):
 
     # Step 8: Save the gene-level counts matrix as a CSV file
     print(f"[DEBUG] Saving gene-level counts matrix as a CSV file")
-    
+
     # Create directories if they don't exist
     output_dir = f"./data/{obj_name}/{name}"
     os.makedirs(output_dir, exist_ok=True)
-    
+
     # Save the gene counts matrix
     gene_count_csv = os.path.join(output_dir, f"{name}_gene_counts.csv")
     result.to_csv(gene_count_csv)
@@ -287,16 +301,17 @@ def process_gene_counts(obj, abundances_tsv_paths, obj_name, name):
 def save_config(config_json):
     ## Save the config file
     print("[DEBUG] Saving configuration to config.json")
-    name = 'config.json'
+    name = "config.json"
     # Delete the existing file config.json
     if os.path.exists(name):
         print(f"[DEBUG] Existing {name} found. Removing it.")
         os.remove(name)
     else:
         print(f"[DEBUG] No existing {name} found. Creating a new one.")
-    with open(name, 'w') as f:
+    with open(name, "w") as f:
         json.dump(config_json, f, indent=4)
     print("[DEBUG] Configuration saved successfully.")
+
 
 def instantiate_organism(args):
     print("[DEBUG] Starting instantiate_organism function.")
@@ -319,13 +334,13 @@ def instantiate_organism(args):
     print(f"Genome Path: {genome_path}")
     print(f"GTF Path: {gtf_path}")
 
-
-
     # Check if paths are absolute, if not, make them absolute
     if transcript_path is not None:
         if not os.path.isabs(transcript_path):
             transcript_path = os.path.abspath(transcript_path)
-            print(f"[DEBUG] Converted transcriptome_path to absolute path: {transcript_path}")
+            print(
+                f"[DEBUG] Converted transcriptome_path to absolute path: {transcript_path}"
+            )
     if not os.path.isabs(genome_path):
         genome_path = os.path.abspath(genome_path)
         print(f"[DEBUG] Converted genome_path to absolute path: {genome_path}")
@@ -342,34 +357,27 @@ def instantiate_organism(args):
         "paths": {
             "transcriptome": transcript_path,
             "genome": genome_path,
-            "gtf": gtf_path
+            "gtf": gtf_path,
         },
-        "alt_paths": {
-            "transcriptome": None,
-            "genome": None,
-            "gtf": None
-        },
+        "alt_paths": {"transcriptome": None, "genome": None, "gtf": None},
         "quantifications": {
             # Placeholder for quantifications
         },
-        "index_paths": {
-            "kallisto_index": None,
-            "t2g": None
-        }
+        "index_paths": {"kallisto_index": None, "t2g": None},
     }
 
     # Load the current config and append the new object
     print("[DEBUG] Loading existing config.json")
     config = None
     try:
-        with open('config.json', 'r') as f:
+        with open("config.json", "r") as f:
             config = json.load(f)
             print(f"[DEBUG] Current config objects: {list(config['objects'].keys())}")
     except FileNotFoundError:
         print("[DEBUG] config.json not found. Initializing a new config.")
         config = {"objects": {}}
 
-    config['objects'][name] = obj
+    config["objects"][name] = obj
     print(f"[DEBUG] Added object '{name}' to config.")
 
     # Directory to store outputs
@@ -380,26 +388,34 @@ def instantiate_organism(args):
     # constructing the gene maps
     gene_id_to_name, gene_name_to_id = create_gene_maps(gtf_path)
 
-    #save them as json files, and store the paths in the object
-    gene_id_to_name_path = os.path.join(output_dir, f"{organism_name}_gene_id_to_name.json")
-    gene_name_to_id_path = os.path.join(output_dir, f"{organism_name}_gene_name_to_id.json")
+    # save them as json files, and store the paths in the object
+    gene_id_to_name_path = os.path.join(
+        output_dir, f"{organism_name}_gene_id_to_name.json"
+    )
+    gene_name_to_id_path = os.path.join(
+        output_dir, f"{organism_name}_gene_name_to_id.json"
+    )
 
-    with open(gene_id_to_name_path, 'w') as f:
+    with open(gene_id_to_name_path, "w") as f:
         json.dump(gene_id_to_name, f, indent=4)
-    with open(gene_name_to_id_path, 'w') as f:
+    with open(gene_name_to_id_path, "w") as f:
         json.dump(gene_name_to_id, f, indent=4)
-    
+
     obj["gene_maps"] = {
         "gene_id_to_name": gene_id_to_name_path,
-        "gene_name_to_id": gene_name_to_id_path
+        "gene_name_to_id": gene_name_to_id_path,
     }
-
 
     ## Run gffread to convert GTF to FASTA if transcript_path is not provided or doesn't exist
     if transcript_path is None or not os.path.exists(transcript_path):
         print(f"Converting GTF to FASTA...")
         gffread_cmd = [
-            "gffread", "-w", f"{output_dir}/{name}_transcripts.fa", "-g", genome_path, gtf_path
+            "gffread",
+            "-w",
+            f"{output_dir}/{name}_transcripts.fa",
+            "-g",
+            genome_path,
+            gtf_path,
         ]
         print(f"[DEBUG] Running gffread command: {' '.join(gffread_cmd)}")
         try:
@@ -420,13 +436,9 @@ def instantiate_organism(args):
     kallisto_index_path = os.path.join(output_dir, f"index.idx")
     kallisto_index_path = os.path.abspath(kallisto_index_path)
     print(f"Indexing genome with kallisto...")
-    kallisto_cmd = [
-        "kallisto", "index",
-        "-i", kallisto_index_path,
-        transcript_path
-    ]
+    kallisto_cmd = ["kallisto", "index", "-i", kallisto_index_path, transcript_path]
     print(f"[DEBUG] Running kallisto index command: {' '.join(kallisto_cmd)}")
-    
+
     try:
         subprocess.run(kallisto_cmd, check=True)
         print(f"Kallisto index created at {kallisto_index_path}")
@@ -440,13 +452,19 @@ def instantiate_organism(args):
     t2g_path = os.path.abspath(t2g_path)
     print(f"Generating t2g.tsv using kb ref...")
     kb_ref_cmd = [
-        "kb", "ref", "-i", "ind.idx",
-        "-g", t2g_path,
-        "-f1", transcript_path,
-        genome_path, gtf_path
+        "kb",
+        "ref",
+        "-i",
+        "ind.idx",
+        "-g",
+        t2g_path,
+        "-f1",
+        transcript_path,
+        genome_path,
+        gtf_path,
     ]
     print(f"[DEBUG] Running kb ref command: {' '.join(kb_ref_cmd)}")
-    
+
     try:
         subprocess.run(kb_ref_cmd, check=True)
         print(f"t2g.tsv generated at {t2g_path}")
@@ -465,24 +483,27 @@ def instantiate_organism(args):
     print("[DEBUG] Updating config object with new paths.")
     print("Updated object:")
     print(json.dumps(obj, indent=4))
-    config['objects'][name] = obj
+    config["objects"][name] = obj
     save_config(config)
     print(f"Updated config file with new paths for '{name}'.")
-    
-    print(f"Genome indexing and t2g generation complete. Ready for downstream quantification!")
+
+    print(
+        f"Genome indexing and t2g generation complete. Ready for downstream quantification!"
+    )
     print("[DEBUG] instantiate_organism function completed successfully.")
+
 
 def quantize(args):
     print("[DEBUG] Starting quantize function.")
     print(f"[DEBUG] Received arguments: {args}")
 
-    sra_list = args.sra.split(',') if args.sra else []
+    sra_list = args.sra.split(",") if args.sra else []
     obj_name = args.obj
     name = args.name
     paired = args.paired
 
     print("Quantizing RNA-Seq data...")
-    
+
     # Debug output
     print(f"Name: {name}")
     print(f"SRA List: {sra_list}")
@@ -492,32 +513,34 @@ def quantize(args):
     config = None
     print("[DEBUG] Loading config.json for quantization.")
     try:
-        with open('config.json', 'r') as f:
+        with open("config.json", "r") as f:
             config = json.load(f)
-            print(f"[DEBUG] Available objects in config: {list(config['objects'].keys())}")
+            print(
+                f"[DEBUG] Available objects in config: {list(config['objects'].keys())}"
+            )
     except FileNotFoundError:
         print("[ERROR] config.json not found. Please instantiate an organism first.")
         return
 
-    if obj_name not in config['objects']:
+    if obj_name not in config["objects"]:
         print(f"[ERROR] Object '{obj_name}' not found in config.")
         return
 
-    obj = config['objects'][obj_name]
+    obj = config["objects"][obj_name]
     print(f"[DEBUG] Loaded object '{obj_name}' from config.")
 
     ## Initialize quantification entry if not present
     # if name not in obj["quantifications"]:
     print(f"[DEBUG] Creating new quantification entry '{name}'.")
     obj["quantifications"][name] = {
-        "sra":{},
+        "sra": {},
         "counts_path": None,
-        "type": "coexpression"
+        "type": "coexpression",
     }
     # else:
     #     print(f"[DEBUG] Quantification entry '{name}' already exists.")
     #     return
-    
+
     sra_dir = f"./data/{obj_name}/{name}/"
     os.makedirs(sra_dir, exist_ok=True)
     ## Download SRA files
@@ -527,7 +550,7 @@ def quantize(args):
         obj["quantifications"][name]["sra"][sra] = {
             "path": os.path.join(sra_dir, f"{sra}/{sra}.sra"),
             "fastq_dir": os.path.join(sra_dir, f"{sra}/"),
-            "paired": paired
+            "paired": paired,
         }
         sra_path = os.path.join(sra_dir, f"{sra}/{sra}.sra")
         print(f"[DEBUG] SRA file path: {sra_path}")
@@ -544,12 +567,7 @@ def quantize(args):
         # Download the SRA file using prefetch if required
         if download:
             print(f"Downloading {sra}...")
-            prefetch_cmd = [
-                "prefetch",
-                sra,
-                "-O",
-                sra_dir
-            ]
+            prefetch_cmd = ["prefetch", sra, "-O", sra_dir]
             print(f"[DEBUG] Running prefetch command: {' '.join(prefetch_cmd)}")
             try:
                 subprocess.run(prefetch_cmd, check=True)
@@ -559,15 +577,10 @@ def quantize(args):
                 return
         else:
             print(f"[DEBUG] Skipping download for {sra} as it already exists.")
-        
-        #now download the metadata.tsv for the SRA
+
+        # now download the metadata.tsv for the SRA
         meta_path = os.path.join(sra_dir, f"{sra}/{sra}_metadata.tsv")
-        meta_cmd = [
-            "pysradb",
-            "metadata",
-            "--detailed",
-            sra
-        ]
+        meta_cmd = ["pysradb", "metadata", "--detailed", sra]
 
         print(f"[DEBUG] Running metadata command: {' '.join(meta_cmd)}")
         try:
@@ -582,8 +595,6 @@ def quantize(args):
 
     print(f"SRA prefetch Done for {sra_list}")
 
-    
-
     ## Once downloaded, perform fastq-dump on the corresponding SRA files
     for sra in sra_list:
         print(f"[DEBUG] Running fastq-dump for SRA accession: {sra}")
@@ -592,29 +603,34 @@ def quantize(args):
         print(f"[DEBUG] SRA path: {sra_path}")
         print(f"[DEBUG] Fastq output directory: {fastqdump_path}")
         if paired:
-            if os.path.exists(f"{fastqdump_path}/{sra}_1.fastq") and os.path.exists(f"{fastqdump_path}/{sra}_2.fastq"):
-                print(f"[DEBUG] Paired-end fastq files already exist for {sra}. Skipping fastq-dump.")
+            if os.path.exists(f"{fastqdump_path}/{sra}_1.fastq") and os.path.exists(
+                f"{fastqdump_path}/{sra}_2.fastq"
+            ):
+                print(
+                    f"[DEBUG] Paired-end fastq files already exist for {sra}. Skipping fastq-dump."
+                )
                 continue
             fastqdump_cmd = [
                 "fastq-dump",
                 "--split-files",
                 "-O",
                 fastqdump_path,
-                sra_path
+                sra_path,
             ]
-            print(f"[DEBUG] Running paired-end fastq-dump command: {' '.join(fastqdump_cmd)}")
+            print(
+                f"[DEBUG] Running paired-end fastq-dump command: {' '.join(fastqdump_cmd)}"
+            )
         else:
             if os.path.exists(f"{fastqdump_path}/{sra}.fastq"):
-                print(f"[DEBUG] Single-end fastq file already exists for {sra}. Skipping fastq-dump.")
+                print(
+                    f"[DEBUG] Single-end fastq file already exists for {sra}. Skipping fastq-dump."
+                )
                 continue
-            fastqdump_cmd = [
-                "fastq-dump",
-                "-O",
-                fastqdump_path,
-                sra_path
-            ]
-            print(f"[DEBUG] Running single-end fastq-dump command: {' '.join(fastqdump_cmd)}")
-        
+            fastqdump_cmd = ["fastq-dump", "-O", fastqdump_path, sra_path]
+            print(
+                f"[DEBUG] Running single-end fastq-dump command: {' '.join(fastqdump_cmd)}"
+            )
+
         try:
             # Uncomment the next line to enable fastq-dump execution
             subprocess.run(fastqdump_cmd, check=True)
@@ -627,7 +643,7 @@ def quantize(args):
 
     # ## Now, quantifying the fastq files using kallisto, different commands for paired and single-end reads
     print("Quantifying the fastq files using kallisto...")
-    
+
     # Run kallisto quantification for each fastq file
     abundances_tsv_paths = []
     for sra in sra_list:
@@ -641,27 +657,41 @@ def quantize(args):
         obj["quantifications"][name]["sra"][sra]["quant_path"] = output_dir
         if paired:
             kallisto_cmd = [
-                "kallisto", "quant",
-                "-i", kallisto_index_path,
-                "-o", output_dir,
-                "-t", "24",
+                "kallisto",
+                "quant",
+                "-i",
+                kallisto_index_path,
+                "-o",
+                output_dir,
+                "-t",
+                "24",
                 f"{fastqdump_path}/{sra}_1.fastq",
-                f"{fastqdump_path}/{sra}_2.fastq"
+                f"{fastqdump_path}/{sra}_2.fastq",
             ]
-            print(f"[DEBUG] Running paired-end kallisto quant command: {' '.join(kallisto_cmd)}")
+            print(
+                f"[DEBUG] Running paired-end kallisto quant command: {' '.join(kallisto_cmd)}"
+            )
         else:
             kallisto_cmd = [
-                "kallisto", "quant",
-                "-i", kallisto_index_path,
+                "kallisto",
+                "quant",
+                "-i",
+                kallisto_index_path,
                 "--single",
-                "-l", "200",
-                "-s", "20",
-                "-t", "24",
-                "-o", output_dir,
-                f"{fastqdump_path}/{sra}.fastq"
+                "-l",
+                "200",
+                "-s",
+                "20",
+                "-t",
+                "24",
+                "-o",
+                output_dir,
+                f"{fastqdump_path}/{sra}.fastq",
             ]
-            print(f"[DEBUG] Running single-end kallisto quant command: {' '.join(kallisto_cmd)}")
-        
+            print(
+                f"[DEBUG] Running single-end kallisto quant command: {' '.join(kallisto_cmd)}"
+            )
+
         try:
             print(f"Running kallisto quant for {sra}...")
             print(kallisto_cmd)
@@ -678,33 +708,48 @@ def quantize(args):
         abundances_tsv_paths.append(abundances_tsv_path)
         print(f"[DEBUG] Abundance TSV path: {abundances_tsv_path}")
 
-
     # update the obj with the new paths
     print("Saving the new paths in config.json\n")
-    print(config['objects'][obj_name])
-    config['objects'][obj_name] = obj
+    print(config["objects"][obj_name])
+    config["objects"][obj_name] = obj
     save_config(config)
-
 
     t2g_path = obj["index_paths"]["t2g"]
     gtf_path = obj["paths"]["gtf"]
     print(f"[DEBUG] t2g path: {t2g_path}")
-    
-    #load the t2g file as a dataframe
-    t2g_df = pd.read_csv(t2g_path, sep="\t", header=None,names=["transcript_id", "gene_id", "gene_name", "transcript_name", "chrom", "start", "end", "strand"])
+
+    # load the t2g file as a dataframe
+    t2g_df = pd.read_csv(
+        t2g_path,
+        sep="\t",
+        header=None,
+        names=[
+            "transcript_id",
+            "gene_id",
+            "gene_name",
+            "transcript_name",
+            "chrom",
+            "start",
+            "end",
+            "strand",
+        ],
+    )
     t2g = t2g_df[["transcript_id", "gene_id"]]
-
-
 
     files = abundances_tsv_paths
     print(f"[DEBUG] Files to import: {files}")
     print(f"[DEBUG] Gene map path: {t2g_path}")
 
     try:
-        result = tximport(file_paths=files, data_type='kallisto', transcript_gene_map=t2g,
-               id_column = "target_id",
-               counts_column = "est_counts",
-               length_column = "eff_length", abundance_column = "tpm")
+        result = tximport(
+            file_paths=files,
+            data_type="kallisto",
+            transcript_gene_map=t2g,
+            id_column="target_id",
+            counts_column="est_counts",
+            length_column="eff_length",
+            abundance_column="tpm",
+        )
         result.X = result.X.round().astype(int)
         # result.obs = pd.DataFrame(index=result.obs_names)
         result.obs["type"] = "type-none"
@@ -721,7 +766,6 @@ def quantize(args):
     # gtf_gene["gene_name"].fillna(gtf_gene["gene_id"], inplace=True)
     # gtf_gene.set_index("gene_id", inplace=True)
     # common_genes = result.var.index.intersection(gtf_gene.index)
-
 
     # result = result[:, result.var.index.isin(common_genes)]
     # # result.obs = None
@@ -740,12 +784,10 @@ def quantize(args):
     # # Update the config with the path to gene count
     # obj["quantifications"][name]["counts_path"] = gene_count_csv
 
-    # print("Saving the new paths in config.json\n")    
+    # print("Saving the new paths in config.json\n")
     # config['objects'][obj_name] = obj
     # save_config(config)
     # print(f"[DEBUG] Quantification '{name}' completed and saved to config.")
-
-
 
     # print("[DEBUG] quantize function completed successfully.")
 
@@ -753,7 +795,9 @@ def quantize(args):
     try:
         # Load GTF and extract gene names
         gtf = pr.read_gtf(gtf_path)
-        gtf_gene = gtf.df[gtf.df["Feature"] == "gene"][["gene_id", "gene_name"]].drop_duplicates()
+        gtf_gene = gtf.df[gtf.df["Feature"] == "gene"][
+            ["gene_id", "gene_name"]
+        ].drop_duplicates()
         gtf_gene["gene_name"].fillna(gtf_gene["gene_id"], inplace=True)
         gtf_gene.set_index("gene_id", inplace=True)
 
@@ -770,10 +814,14 @@ def quantize(args):
         file_to_sra_mapping = dict(zip(abundances_tsv_paths, sra_list))
 
         # Replace result.obs_names with the SRA codes
-        result.obs_names = result.obs_names.map(lambda x: file_to_sra_mapping.get(x, x))  # Replace path with SRA code
+        result.obs_names = result.obs_names.map(
+            lambda x: file_to_sra_mapping.get(x, x)
+        )  # Replace path with SRA code
 
         # Print the updated result.obs_names for debugging
-        print(f"[DEBUG] result.obs_names (after replacing with SRA codes): {result.obs_names}")
+        print(
+            f"[DEBUG] result.obs_names (after replacing with SRA codes): {result.obs_names}"
+        )
 
     except Exception as e:
         print(f"[ERROR] Error in extracting gene names: {e}")
@@ -803,34 +851,46 @@ def quantize(args):
     #     print(f"[ERROR] Error while saving gene-level counts matrix: {e}")
     #     return
 
-
     try:
         print(f"[DEBUG] Saving gene-level counts matrix as a CSV file")
-        gene_count_csv = os.path.join(f"./data/{obj_name}/{name}", f"{name}_gene_counts.csv")
+        gene_count_csv = os.path.join(
+            f"./data/{obj_name}/{name}", f"{name}_gene_counts.csv"
+        )
         os.makedirs(os.path.dirname(gene_count_csv), exist_ok=True)
 
         # Convert the numpy array result.X to a pandas DataFrame
-        gene_counts_df = pd.DataFrame(result.X, index=result.obs_names, columns=result.var_names)
+        gene_counts_df = pd.DataFrame(
+            result.X, index=result.obs_names, columns=result.var_names
+        )
         print(f"[DEBUG] Gene counts DataFrame shape: {gene_counts_df.shape}")
         print(f"[DEBUG] Gene counts DataFrame head:\n{gene_counts_df.head()}")
         print(f"[DEBUG] Gene counts DataFrame columns:\n{gene_counts_df.columns}")
         print(f"[DEBUG] Gene counts DataFrame index:\n{gene_counts_df.index}")
 
-        dds = DeseqDataSet(counts = gene_counts_df, metadata = pd.DataFrame({'condition': gene_counts_df.T.columns}, index = gene_counts_df.T.columns))
+        dds = DeseqDataSet(
+            counts=gene_counts_df,
+            metadata=pd.DataFrame(
+                {"condition": gene_counts_df.T.columns}, index=gene_counts_df.T.columns
+            ),
+        )
         dds.fit_size_factors()
-        gngdf = pd.DataFrame(dds.layers["normed_counts"].T, index = gene_counts_df.T.index, columns = gene_counts_df.T.columns)
+        gngdf = pd.DataFrame(
+            dds.layers["normed_counts"].T,
+            index=gene_counts_df.T.index,
+            columns=gene_counts_df.T.columns,
+        )
 
         # print(f"[DEBUG] result,obs_names: {result.obs_names}")
 
         # print(f"[DEBUG] Gene counts DataFrame shape: {gene_counts_df.shape}")
         # print(f"[DEBUG] Gene counts DataFrame head:\n{gene_counts_df.head()}")
-        # #columns names are 
+        # #columns names are
         # print(f"[DEBUG] Gene counts DataFrame columns:\n{gene_counts_df.columns}")
         # # Transpose to make genes as columns
         # # gngdf = gene_counts_df.T
         # print(f"[DEBUG] Gene counts DataFrame shape after transposing: {gngdf.shape}")
         # print(f"[DEBUG] Gene counts DataFrame head after transposing:\n{gngdf.head()}")
-        # print(f"[DEBUG] Gene counts DataFrame columns after transposing:\n{gngdf.columns}") 
+        # print(f"[DEBUG] Gene counts DataFrame columns after transposing:\n{gngdf.columns}")
         # Save the gene counts matrix to a CSV file
         gngdf.to_csv(gene_count_csv, index=True)
 
@@ -840,7 +900,7 @@ def quantize(args):
         obj["quantifications"][name]["counts_path"] = gene_count_csv
 
         print(f"Saving the new paths in config.json")
-        config['objects'][obj_name] = obj
+        config["objects"][obj_name] = obj
         save_config(config)
         print(f"[DEBUG] Quantification '{name}' completed and saved to config.")
 
@@ -849,30 +909,33 @@ def quantize(args):
         return
     print("[DEBUG] quantize function completed successfully.")
 
+
 def list_quantifications(args):
     obj_name = args.obj
     print(f"Listing quantifications for object '{obj_name}'...")
     config = None
     print("[DEBUG] Loading config.json for listing quantifications.")
     try:
-        with open('config.json', 'r') as f:
+        with open("config.json", "r") as f:
             config = json.load(f)
-            print(f"[DEBUG] Available objects in config: {list(config['objects'].keys())}")
+            print(
+                f"[DEBUG] Available objects in config: {list(config['objects'].keys())}"
+            )
     except FileNotFoundError:
         print("[ERROR] config.json not found. Please instantiate an organism first.")
         return
-    
-    if obj_name not in config['objects']:
+
+    if obj_name not in config["objects"]:
         print(f"[ERROR] Object '{obj_name}' not found in config.")
         return
-    
-    obj = config['objects'][obj_name]
+
+    obj = config["objects"][obj_name]
     print(f"[DEBUG] Loaded object '{obj_name}' from config.")
 
     if not obj["quantifications"]:
         print(f"[DEBUG] No quantifications found for object '{obj_name}'.")
         return
-    
+
     print(f"Quantifications for object '{obj_name}':")
     for quant_name, quant in obj["quantifications"].items():
         print(f"- {quant_name}:")
@@ -895,41 +958,49 @@ def plot_gene_abundances(args):
     output = args.output
 
     if named:
-        #find the gene_id from the gene_name
+        # find the gene_id from the gene_name
         gene_id = None
-        with open(f"./data/{obj_name}/{quant_name}/{obj_name}_gene_name_to_id.json") as f:
+        with open(
+            f"./data/{obj_name}/{quant_name}/{obj_name}_gene_name_to_id.json"
+        ) as f:
             gene_name_to_id = json.load(f)
             gene_id = gene_name_to_id.get(target_gene, None)
         if gene_id is None:
-            print(f"Gene name '{target_gene}' not found in the gene name to ID mapping.")
+            print(
+                f"Gene name '{target_gene}' not found in the gene name to ID mapping."
+            )
             return
         else:
             target_gene = gene_id
     # Debug output
     print(f"[DEBUG] Object Name: {obj_name}")
-    config_path = 'config.json'
+    config_path = "config.json"
 
     # Step 1: Load the configuration
     try:
         if not os.path.exists(config_path):
             raise FileNotFoundError(f"Config file '{config_path}' not found.")
 
-        with open(config_path, 'r') as f:
+        with open(config_path, "r") as f:
             config = json.load(f)
 
-        if obj_name not in config['objects']:
+        if obj_name not in config["objects"]:
             raise ValueError(f"Object '{obj_name}' not found in config.")
-            
-        obj = config['objects'][obj_name]
-        
+
+        obj = config["objects"][obj_name]
+
         if quant_name not in obj["quantifications"]:
-            raise ValueError(f"Quantification '{quant_name}' not found for object '{obj_name}'.")
-            
+            raise ValueError(
+                f"Quantification '{quant_name}' not found for object '{obj_name}'."
+            )
+
         # Step 2: Get the path to the gene counts file
         path_to_gene_count = obj["quantifications"][quant_name]["counts_path"]
         if not os.path.exists(path_to_gene_count):
-            raise FileNotFoundError(f"Gene counts file '{path_to_gene_count}' not found.")
-        
+            raise FileNotFoundError(
+                f"Gene counts file '{path_to_gene_count}' not found."
+            )
+
     except (FileNotFoundError, ValueError, KeyError) as e:
         print(f"[ERROR] {e}")
         return
@@ -940,13 +1011,17 @@ def plot_gene_abundances(args):
         df = pd.read_csv(path_to_gene_count, index_col=0)
         if df.empty:
             raise ValueError(f"The gene counts file '{path_to_gene_count}' is empty.")
-        print(f"OK")    
+        print(f"OK")
         # Ensure the target gene exists in the dataframe
         if target_gene not in df.index:
-            raise ValueError(f"Target gene '{target_gene}' not found in gene counts file.")
-        
+            raise ValueError(
+                f"Target gene '{target_gene}' not found in gene counts file."
+            )
+
     except pd.errors.EmptyDataError:
-        print(f"[ERROR] The gene counts file '{path_to_gene_count}' is empty or corrupt.")
+        print(
+            f"[ERROR] The gene counts file '{path_to_gene_count}' is empty or corrupt."
+        )
         return
     except FileNotFoundError as e:
         print(f"[ERROR] {e}")
@@ -959,20 +1034,20 @@ def plot_gene_abundances(args):
     try:
         # Convert the dataframe to numpy for fast lookup
         # array_with_genes = df.values
-        
+
         # Fetch the row where the first column matches the target gene
         gene_row = df.loc[target_gene].values
-        
+
         if gene_row.size == 0:
             raise ValueError(f"Gene '{target_gene}' not found in the gene counts file.")
-        
+
         # Extract the gene's expression values across samples
         values = gene_row.astype(float)  # Assuming gene expression values are numeric
         labels = df.columns[:].tolist()  # Sample names are in the columns
-        
+
         # Step 5: Plot the gene abundances
         plt.figure(figsize=(10, 6))
-        plt.bar(labels, values, color='blue')
+        plt.bar(labels, values, color="blue")
         plt.xlabel("Samples")
         plt.ylabel("Expression Level (in TPM)")
         plt.title(f"Gene Abundances for {target_gene}")
@@ -997,87 +1072,104 @@ def generate_correlation_matrix(args):
         output_dir = args.output_dir
 
         # Debug output
-        print(f"Object Name: {obj_name}, Quantification Name: {quant_name}, Gene List File: {gene_list_file}")
+        print(
+            f"Object Name: {obj_name}, Quantification Name: {quant_name}, Gene List File: {gene_list_file}"
+        )
 
         # Load the config file
-        if not os.path.exists('config.json'):
+        if not os.path.exists("config.json"):
             raise FileNotFoundError("The config.json file was not found.")
 
-        with open('config.json', 'r') as f:
+        with open("config.json", "r") as f:
             try:
                 config = json.load(f)
             except json.JSONDecodeError as e:
                 raise ValueError(f"Error decoding config.json: {str(e)}")
 
         # Retrieve object and path to gene count
-        if obj_name not in config.get('objects', {}):
+        if obj_name not in config.get("objects", {}):
             raise KeyError(f"Object '{obj_name}' not found in config.json.")
 
-        obj = config['objects'][obj_name]
-        quantifications = obj.get('quantifications', {})
+        obj = config["objects"][obj_name]
+        quantifications = obj.get("quantifications", {})
 
         if quant_name not in quantifications:
-            raise KeyError(f"Quantification '{quant_name}' not found for object '{obj_name}' in config.json.")
+            raise KeyError(
+                f"Quantification '{quant_name}' not found for object '{obj_name}' in config.json."
+            )
 
         path_to_gene_count = quantifications[quant_name].get("counts_path")
         if not os.path.exists(path_to_gene_count):
-            raise FileNotFoundError(f"Gene count file '{path_to_gene_count}' not found.")
+            raise FileNotFoundError(
+                f"Gene count file '{path_to_gene_count}' not found."
+            )
 
         # Load gene count data
         try:
-            gene_count_df = pd.read_csv(path_to_gene_count,index_col=0)
+            gene_count_df = pd.read_csv(path_to_gene_count, index_col=0)
         except Exception as e:
-            raise ValueError(f"Error reading gene count file '{path_to_gene_count}': {str(e)}")
-
-
+            raise ValueError(
+                f"Error reading gene count file '{path_to_gene_count}': {str(e)}"
+            )
 
         # gene_count_data = gene_count_df.values
-        
-        #debug output
+
+        # debug output
         # print(f"[DEBUG] Gene count data shape: {gene_count_data.shape}")
         # print(f"[DEBUG] Gene count data head:\n{gene_count_data[:5]}")
 
         # Load gene list file
         if not os.path.exists(gene_list_file):
             raise FileNotFoundError(f"Gene list file '{gene_list_file}' not found.")
-        
+
         try:
-            gene_list_df = pd.read_csv(gene_list_file,header=None)
+            gene_list_df = pd.read_csv(gene_list_file, header=None)
         except Exception as e:
-            raise ValueError(f"Error reading gene list file '{gene_list_file}': {str(e)}")
+            raise ValueError(
+                f"Error reading gene list file '{gene_list_file}': {str(e)}"
+            )
 
         gene_list = gene_list_df[0].tolist()
 
         # Filter gene count data based on the gene list
         try:
             # array_with_genes = gene_count_data[np.isin(gene_count_df[:, 0], gene_count_df.index)]
-            new_df = gene_count_df.loc[[index for index in gene_list if index in gene_count_df.index]] 
+            new_df = gene_count_df.loc[
+                [index for index in gene_list if index in gene_count_df.index]
+            ]
             if new_df.size == 0:
-                raise ValueError("No matching genes found between the gene count data and the provided gene list.")
+                raise ValueError(
+                    "No matching genes found between the gene count data and the provided gene list."
+                )
         except Exception as e:
             raise ValueError(f"Error filtering gene count data: {str(e)}")
 
         # Extract gene names (first column)
         gene_names = [index for index in gene_list if index in gene_count_df.index]
-       
+
         # Create a DataFrame with gene names as index
         df = new_df
 
         # Compute the correlation matrix
         correlation_matrix = df.T.corr()
 
-        #save the correlation matrix in the the output file
+        # save the correlation matrix in the the output file
         correlation_matrix.to_csv(os.path.join(output_dir, "correlation_matrix.csv"))
 
         # Plot the heatmap
         plt.figure(figsize=(10, 8))  # Adjust figure size for better readability
-        sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', 
-                    xticklabels=gene_names, yticklabels=gene_names, 
-                    annot_kws={"size": 8},  # Adjust font size
-                    cbar_kws={'label': 'Correlation coefficient'})  # Add colorbar label
+        sns.heatmap(
+            correlation_matrix,
+            annot=True,
+            cmap="coolwarm",
+            xticklabels=gene_names,
+            yticklabels=gene_names,
+            annot_kws={"size": 8},  # Adjust font size
+            cbar_kws={"label": "Correlation coefficient"},
+        )  # Add colorbar label
 
         # Rotate x-axis labels for better readability
-        plt.xticks(rotation=45, ha='right', fontsize=10)
+        plt.xticks(rotation=45, ha="right", fontsize=10)
         plt.yticks(fontsize=10)
 
         # Adjust layout
@@ -1102,27 +1194,29 @@ def name2id(args):
     print(f"Converting gene name '{gene_name}' to gene ID for object '{obj_name}'...")
     config = None
     try:
-        with open('config.json', 'r') as f:
+        with open("config.json", "r") as f:
             config = json.load(f)
     except FileNotFoundError:
         print("[ERROR] config.json not found. Please instantiate an organism first.")
         return
 
-    if obj_name not in config['objects']:
+    if obj_name not in config["objects"]:
         print(f"[ERROR] Object '{obj_name}' not found in config.")
         return
 
-    obj = config['objects'][obj_name]
+    obj = config["objects"][obj_name]
     print(f"[DEBUG] Loaded object '{obj_name}' from config.")
 
     gene_id = None
     gene_name_to_id_path = obj["gene_maps"]["gene_name_to_id"]
     if not os.path.exists(gene_name_to_id_path):
-        print(f"[ERROR] Gene name to ID mapping file '{gene_name_to_id_path}' not found.")
+        print(
+            f"[ERROR] Gene name to ID mapping file '{gene_name_to_id_path}' not found."
+        )
         return
 
     try:
-        with open(gene_name_to_id_path, 'r') as f:
+        with open(gene_name_to_id_path, "r") as f:
             gene_name_to_id = json.load(f)
             gene_id = gene_name_to_id.get(gene_name, None)
     except Exception as e:
@@ -1134,6 +1228,7 @@ def name2id(args):
     else:
         print(f"Gene name '{gene_name}' maps to gene ID '{gene_id}'.")
 
+
 def gene2fasta(args):
     obj_name = args.obj
     gene_name = args.gene
@@ -1143,28 +1238,30 @@ def gene2fasta(args):
     # print(f"Converting gene name '{gene_name}' to gene ID for object '{obj_name}'...")
     config = None
     try:
-        with open('config.json', 'r') as f:
+        with open("config.json", "r") as f:
             config = json.load(f)
     except FileNotFoundError:
         print("[ERROR] config.json not found. Please instantiate an organism first.")
         return
 
-    if obj_name not in config['objects']:
+    if obj_name not in config["objects"]:
         print(f"[ERROR] Object '{obj_name}' not found in config.")
         return
 
-    obj = config['objects'][obj_name]
-    
+    obj = config["objects"][obj_name]
+
     print(f"[DEBUG] Loaded object '{obj_name}' from config.")
 
     if named:
         gene_name_to_id_path = obj["gene_maps"]["gene_name_to_id"]
         if not os.path.exists(gene_name_to_id_path):
-            print(f"[ERROR] Gene name to ID mapping file '{gene_name_to_id_path}' not found.")
+            print(
+                f"[ERROR] Gene name to ID mapping file '{gene_name_to_id_path}' not found."
+            )
             return
 
         try:
-            with open(gene_name_to_id_path, 'r') as f:
+            with open(gene_name_to_id_path, "r") as f:
                 gene_name_to_id = json.load(f)
                 gene_id = gene_name_to_id.get(gene_name, None)
         except Exception as e:
@@ -1175,13 +1272,13 @@ def gene2fasta(args):
             print(f"Gene name '{gene_name}' not found in the gene name to ID mapping.")
         else:
             print(f"Gene name '{gene_name}' maps to gene ID '{gene_id}'.")
-        
+
     else:
         gene_id = gene_name
-    
+
     outpath = os.path.join(output_dir, f"{gene_name}.fasta")
     gtf_path = obj["paths"]["gtf"]
-    genome_path = obj["paths"]["genome"]    
+    genome_path = obj["paths"]["genome"]
 
     # Ensure GTF and genome paths exist
     if not os.path.exists(gtf_path):
@@ -1196,31 +1293,32 @@ def gene2fasta(args):
         extract_gene_sequence(gene_id, gtf_path, genome_path, outpath)
     except Exception as e:
         print(f"[ERROR] Failed to extract gene sequence: {e}")
-    
+
+
 def list_objs(args):
     print("Listing objects...")
     config = None
     try:
-        with open('config.json', 'r') as f:
+        with open("config.json", "r") as f:
             config = json.load(f)
     except FileNotFoundError:
         print("[ERROR] config.json not found.")
         return
 
-    if not config.get('objects'):
+    if not config.get("objects"):
         print("No objects found in config.json.")
         return
 
     print("Objects:")
-    for obj_name in config['objects']:
+    for obj_name in config["objects"]:
         print(f"- {obj_name}")
 
 
 def quant_deseq(args):
-    #bioproject accession - SRPxxxxxx
-    #object name
-    #quantification name
-    
+    # bioproject accession - SRPxxxxxx
+    # object name
+    # quantification name
+
     name = args.quantification_name
     obj_name = args.obj
     srp = args.srp
@@ -1228,56 +1326,51 @@ def quant_deseq(args):
     output_dir = args.output_dir
 
     # Load the config file
-    config_path = 'config.json'
+    config_path = "config.json"
     if not os.path.exists(config_path):
         print(f"[ERROR] Config file '{config_path}' not found.")
         return
-    
+
     try:
-        with open(config_path, 'r') as f:
+        with open(config_path, "r") as f:
             config = json.load(f)
     except Exception as e:
         print(f"[ERROR] Error loading config file: {e}")
         return
-    
+
     # Check if the object exists in the config
-    if obj_name not in config['objects']:
+    if obj_name not in config["objects"]:
         print(f"[ERROR] Object '{obj_name}' not found in config.")
         return
-    
-    obj = config['objects'][obj_name]
-    print(f"[DEBUG] Loaded object '{obj_name}' from config.")
 
+    obj = config["objects"][obj_name]
+    print(f"[DEBUG] Loaded object '{obj_name}' from config.")
 
     # check if the quantifications key exists in the object
     if "quantifications" not in obj:
         print(f"[ERROR] No quantifications found for object '{obj_name}'.")
         return
-    
+
     # create new quantification entry, and also initialize the corresponding dictionary
 
     if name in obj["quantifications"]:
-        print(f"[WARNING] Quantification '{name}' already exists for object '{obj_name}'.")
+        print(
+            f"[WARNING] Quantification '{name}' already exists for object '{obj_name}'."
+        )
         # return
-    
+
     obj["quantifications"][name] = {
         "sra": {},
         "srp": srp,
         "paired": paired,
-        "type" : "deseq",
-        "output_dir": output_dir
-
+        "type": "deseq",
+        "output_dir": output_dir,
     }
     quant_path = f"./data/{obj_name}/{name}/"
     os.makedirs(quant_path, exist_ok=True)
     quant_path = os.path.abspath(quant_path)
     meta_path = os.path.join(quant_path, f"{srp}_metadata.tsv")
-    meta_cmd = [
-        "pysradb",
-        "metadata",
-        "--detailed",
-        srp
-    ]
+    meta_cmd = ["pysradb", "metadata", "--detailed", srp]
 
     print(f"[DEBUG] Running metadata command: {' '.join(meta_cmd)}")
     try:
@@ -1290,11 +1383,12 @@ def quant_deseq(args):
         print(f"Error while downloading Metadata file {srp}: {e}")
         return
 
-
     metadata = pd.read_csv(meta_path, sep="\t")
     metadata.set_index("run_accession", inplace=True)
     metadata = metadata.sort_values("library_name")
-    metadata["library_name"] = pd.Categorical(metadata["library_name"], categories=metadata["library_name"].unique())
+    metadata["library_name"] = pd.Categorical(
+        metadata["library_name"], categories=metadata["library_name"].unique()
+    )
 
     sra_list = [acc for acc in metadata.index]
 
@@ -1308,7 +1402,7 @@ def quant_deseq(args):
         obj["quantifications"][name]["sra"][sra] = {
             "path": os.path.join(sra_dir, f"{sra}/{sra}.sra"),
             "fastq_dir": os.path.join(sra_dir, f"{sra}/"),
-            "paired": paired
+            "paired": paired,
         }
         sra_path = os.path.join(sra_dir, f"{sra}/{sra}.sra")
         print(f"[DEBUG] SRA file path: {sra_path}")
@@ -1325,12 +1419,7 @@ def quant_deseq(args):
         # Download the SRA file using prefetch if required
         if download:
             print(f"Downloading {sra}...")
-            prefetch_cmd = [
-                "prefetch",
-                sra,
-                "-O",
-                sra_dir
-            ]
+            prefetch_cmd = ["prefetch", sra, "-O", sra_dir]
             print(f"[DEBUG] Running prefetch command: {' '.join(prefetch_cmd)}")
             try:
                 subprocess.run(prefetch_cmd, check=True)
@@ -1340,11 +1429,10 @@ def quant_deseq(args):
                 return
         else:
             print(f"[DEBUG] Skipping download for {sra} as it already exists.")
-        
+
     print(f"SRA prefetch Done for {sra_list}")
 
-
-        ## Once downloaded, perform fastq-dump on the corresponding SRA files
+    ## Once downloaded, perform fastq-dump on the corresponding SRA files
     for sra in sra_list:
         print(f"[DEBUG] Running fastq-dump for SRA accession: {sra}")
         sra_path = f"./data/{obj_name}/{name}/{sra}/{sra}.sra"
@@ -1353,8 +1441,12 @@ def quant_deseq(args):
         print(f"[DEBUG] Fastq output directory: {fastqdump_path}")
 
         if paired:
-            if os.path.exists(f"{fastqdump_path}/{sra}_1.fastq") and os.path.exists(f"{fastqdump_path}/{sra}_2.fastq"):
-                print(f"[DEBUG] Paired-end fastq files already exist for {sra}. Skipping fastq-dump.")
+            if os.path.exists(f"{fastqdump_path}/{sra}_1.fastq") and os.path.exists(
+                f"{fastqdump_path}/{sra}_2.fastq"
+            ):
+                print(
+                    f"[DEBUG] Paired-end fastq files already exist for {sra}. Skipping fastq-dump."
+                )
                 continue
 
             fastqdump_cmd = [
@@ -1362,21 +1454,22 @@ def quant_deseq(args):
                 "--split-files",
                 "-O",
                 fastqdump_path,
-                sra_path
+                sra_path,
             ]
-            print(f"[DEBUG] Running paired-end fastq-dump command: {' '.join(fastqdump_cmd)}")
+            print(
+                f"[DEBUG] Running paired-end fastq-dump command: {' '.join(fastqdump_cmd)}"
+            )
         else:
             if os.path.exists(f"{fastqdump_path}/{sra}.fastq"):
-                print(f"[DEBUG] Single-end fastq file already exists for {sra}. Skipping fastq-dump.")
+                print(
+                    f"[DEBUG] Single-end fastq file already exists for {sra}. Skipping fastq-dump."
+                )
                 continue
-            fastqdump_cmd = [
-                "fastq-dump",
-                "-O",
-                fastqdump_path,
-                sra_path
-            ]
-            print(f"[DEBUG] Running single-end fastq-dump command: {' '.join(fastqdump_cmd)}")
-        
+            fastqdump_cmd = ["fastq-dump", "-O", fastqdump_path, sra_path]
+            print(
+                f"[DEBUG] Running single-end fastq-dump command: {' '.join(fastqdump_cmd)}"
+            )
+
         try:
             # Uncomment the next line to enable fastq-dump execution
             subprocess.run(fastqdump_cmd, check=True)
@@ -1387,9 +1480,8 @@ def quant_deseq(args):
 
     print(f"Fastq dump Done for {sra_list}")
 
-
     print("Quantifying the fastq files using kallisto...")
-    
+
     # Run kallisto quantification for each fastq file
     abundances_tsv_paths = []
     for sra in sra_list:
@@ -1403,27 +1495,41 @@ def quant_deseq(args):
         obj["quantifications"][name]["sra"][sra]["quant_path"] = output_dir
         if paired:
             kallisto_cmd = [
-                "kallisto", "quant",
-                "-i", kallisto_index_path,
-                "-o", output_dir,
-                "-t", "24",
+                "kallisto",
+                "quant",
+                "-i",
+                kallisto_index_path,
+                "-o",
+                output_dir,
+                "-t",
+                "24",
                 f"{fastqdump_path}/{sra}_1.fastq",
-                f"{fastqdump_path}/{sra}_2.fastq"
+                f"{fastqdump_path}/{sra}_2.fastq",
             ]
-            print(f"[DEBUG] Running paired-end kallisto quant command: {' '.join(kallisto_cmd)}")
+            print(
+                f"[DEBUG] Running paired-end kallisto quant command: {' '.join(kallisto_cmd)}"
+            )
         else:
             kallisto_cmd = [
-                "kallisto", "quant",
-                "-i", kallisto_index_path,
+                "kallisto",
+                "quant",
+                "-i",
+                kallisto_index_path,
                 "--single",
-                "-l", "200",
-                "-s", "20",
-                "-t", "24",
-                "-o", output_dir,
-                f"{fastqdump_path}/{sra}.fastq"
+                "-l",
+                "200",
+                "-s",
+                "20",
+                "-t",
+                "24",
+                "-o",
+                output_dir,
+                f"{fastqdump_path}/{sra}.fastq",
             ]
-            print(f"[DEBUG] Running single-end kallisto quant command: {' '.join(kallisto_cmd)}")
-        
+            print(
+                f"[DEBUG] Running single-end kallisto quant command: {' '.join(kallisto_cmd)}"
+            )
+
         try:
             print(f"Running kallisto quant for {sra}...")
             print(kallisto_cmd)
@@ -1440,11 +1546,10 @@ def quant_deseq(args):
         abundances_tsv_paths.append(abundances_tsv_path)
         print(f"[DEBUG] Abundance TSV path: {abundances_tsv_path}")
 
-
     # update the obj with the new paths
     print("Saving the new paths in config.json\n")
-    print(config['objects'][obj_name])
-    config['objects'][obj_name] = obj
+    print(config["objects"][obj_name])
+    config["objects"][obj_name] = obj
     save_config(config)
 
     print(f"[DEBUG] Quantification '{name}' completed and saved to config.")
@@ -1452,30 +1557,45 @@ def quant_deseq(args):
     t2g_path = obj["index_paths"]["t2g"]
     gtf_path = obj["paths"]["gtf"]
     print(f"[DEBUG] t2g path: {t2g_path}")
-    
-    #load the t2g file as a dataframe
-    t2g_df = pd.read_csv(t2g_path, sep="\t", header=None,names=["transcript_id", "gene_id", "gene_name", "transcript_name", "chrom", "start", "end", "strand"])
+
+    # load the t2g file as a dataframe
+    t2g_df = pd.read_csv(
+        t2g_path,
+        sep="\t",
+        header=None,
+        names=[
+            "transcript_id",
+            "gene_id",
+            "gene_name",
+            "transcript_name",
+            "chrom",
+            "start",
+            "end",
+            "strand",
+        ],
+    )
     t2g = t2g_df[["transcript_id", "gene_id"]]
-
-
 
     files = abundances_tsv_paths
     print(f"[DEBUG] Files to import: {files}")
     print(f"[DEBUG] Gene map path: {t2g_path}")
 
     try:
-        result = tximport(file_paths=files, data_type='kallisto', transcript_gene_map=t2g,
-               id_column = "target_id",
-               counts_column = "est_counts",
-               length_column = "eff_length", abundance_column = "tpm")
+        result = tximport(
+            file_paths=files,
+            data_type="kallisto",
+            transcript_gene_map=t2g,
+            id_column="target_id",
+            counts_column="est_counts",
+            length_column="eff_length",
+            abundance_column="tpm",
+        )
         result.X = result.X.round().astype(int)
         # result.obs = pd.DataFrame(index=result.obs_names)
 
     except Exception as e:
         print(f"[ERROR] Tximport Failure: {e}")
         return
-    
-
 
     # metadata["type"] = metadata["library_name"].str.split("-", n=1).str[0]
     # metadata["type"] = pd.Categorical(metadata["type"], categories=metadata["type"].unique())
@@ -1488,7 +1608,6 @@ def quant_deseq(args):
     # gtf_gene = gtf.df[gtf.df["Feature"] == "gene"][["gene_id", "gene_name"]].drop_duplicates()
     # gtf_gene["gene_name"].fillna(gtf_gene["gene_id"], inplace=True)
     # gtf_gene.set_index("gene_id", inplace=True)
-
 
     # common_genes = result.var.index.intersection(gtf_gene.index)
 
@@ -1530,7 +1649,9 @@ def quant_deseq(args):
 
     try:
         metadata["type"] = metadata["library_name"].str.split("-", n=1).str[0]
-        metadata["type"] = pd.Categorical(metadata["type"], categories=metadata["type"].unique())
+        metadata["type"] = pd.Categorical(
+            metadata["type"], categories=metadata["type"].unique()
+        )
         metadata["replicate"] = metadata["library_name"].str.split("-", n=1).str[1]
 
         result.obs["type"] = metadata["type"]
@@ -1544,7 +1665,9 @@ def quant_deseq(args):
 
     try:
         gtf = pr.read_gtf(gtf_path)
-        gtf_gene = gtf.df[gtf.df["Feature"] == "gene"][["gene_id", "gene_name"]].drop_duplicates()
+        gtf_gene = gtf.df[gtf.df["Feature"] == "gene"][
+            ["gene_id", "gene_name"]
+        ].drop_duplicates()
         gtf_gene["gene_name"].fillna(gtf_gene["gene_id"], inplace=True)
         gtf_gene.set_index("gene_id", inplace=True)
     except FileNotFoundError as e:
@@ -1567,7 +1690,7 @@ def quant_deseq(args):
             design_factors="type",
             refit_cooks=True,
             inference=DefaultInference(n_cpus=8),
-            quiet=True
+            quiet=True,
         )
         dds.deseq2()
     except Exception as e:
@@ -1611,25 +1734,21 @@ def quant_deseq(args):
         print(f"Error while generating or saving PCA plot: {e}")
 
 
-
-
-    
-
 def remove_object(args):
     obj_name = args.obj
     print(f"Removing object '{obj_name}'...")
     config = None
     try:
-        with open('config.json', 'r') as f:
+        with open("config.json", "r") as f:
             config = json.load(f)
     except FileNotFoundError:
         print("[ERROR] config.json not found.")
         return
 
-    if obj_name not in config['objects']:
+    if obj_name not in config["objects"]:
         print(f"[ERROR] Object '{obj_name}' not found in config.")
         return
-    #delete the object directory using os
+    # delete the object directory using os
     dir_path = f"./data/{obj_name}"
     try:
         shutil.rmtree(dir_path)
@@ -1637,113 +1756,154 @@ def remove_object(args):
     except Exception as e:
         print(f"[ERROR] Error removing object directory: {e}")
         return
-    
 
-
-    del config['objects'][obj_name]
+    del config["objects"][obj_name]
     save_config(config)
     print(f"Object '{obj_name}' removed from config.")
-
-
-
-
-
-
-
 
 
 def main():
 
     # Check if config file exists
-    if not os.path.exists('config.json'):
+    if not os.path.exists("config.json"):
         print("[DEBUG] config.json does not exist. Creating a new one.")
-        with open('config.json', 'w') as f:
+        with open("config.json", "w") as f:
             json.dump({"objects": {}}, f, indent=4)
     else:
         print("[DEBUG] config.json found.")
 
-    parser = argparse.ArgumentParser(description='GENECorder CLI')
-    subparsers = parser.add_subparsers(dest='command')
+    parser = argparse.ArgumentParser(description="GENECorder CLI")
+    subparsers = parser.add_subparsers(dest="command")
 
     # Instantiate
-    parser_instantiate = subparsers.add_parser('instantiate', help='Instantiate an object of an organism, providing paths to the genome, transcriptome, and annotation files, ')
-    parser_instantiate.add_argument('--organism', required=True, help='Organism name')
-    parser_instantiate.add_argument('--name', required=True, help='Name for this quantification instance')
-    parser_instantiate.add_argument('--desc', required=False, help='Description for this quantification')
-    parser_instantiate.add_argument('--transcriptome_path', required=False, help='Path to transcriptome file in fasta format')
-    parser_instantiate.add_argument('--genome_path', required=True, help='Path to genome file in fasta format')
-    parser_instantiate.add_argument('--gtf_path', required=True, help='Path to the annotation file in GTF/GFF format')
+    parser_instantiate = subparsers.add_parser(
+        "instantiate",
+        help="Instantiate an object of an organism, providing paths to the genome, transcriptome, and annotation files, ",
+    )
+    parser_instantiate.add_argument("--organism", required=True, help="Organism name")
+    parser_instantiate.add_argument(
+        "--name", required=True, help="Name for this quantification instance"
+    )
+    parser_instantiate.add_argument(
+        "--desc", required=False, help="Description for this quantification"
+    )
+    parser_instantiate.add_argument(
+        "--transcriptome_path",
+        required=False,
+        help="Path to transcriptome file in fasta format",
+    )
+    parser_instantiate.add_argument(
+        "--genome_path", required=True, help="Path to genome file in fasta format"
+    )
+    parser_instantiate.add_argument(
+        "--gtf_path",
+        required=True,
+        help="Path to the annotation file in GTF/GFF format",
+    )
     parser_instantiate.set_defaults(func=instantiate_organism)
 
     # Quantize
-    parser_quantize = subparsers.add_parser('quantize', help='Quantize RNA-Seq data')
-    parser_quantize.add_argument('--sra', required=True, help='Comma-separated SRA accession codes')
-    parser_quantize.add_argument('--name', required=True, help='Name for this quantification')
-    parser_quantize.add_argument('--obj', required=True, help='Object name')
-    parser_quantize.add_argument('--paired', required=False, action='store_true', help='Paired-end reads')
+    parser_quantize = subparsers.add_parser("quantize", help="Quantize RNA-Seq data")
+    parser_quantize.add_argument(
+        "--sra", required=True, help="Comma-separated SRA accession codes"
+    )
+    parser_quantize.add_argument(
+        "--name", required=True, help="Name for this quantification"
+    )
+    parser_quantize.add_argument("--obj", required=True, help="Object name")
+    parser_quantize.add_argument(
+        "--paired", required=False, action="store_true", help="Paired-end reads"
+    )
     parser_quantize.set_defaults(func=quantize)
 
     # Uncomment and implement additional subparsers as needed
-    parser_list_quant = subparsers.add_parser('list_quant', help='List quantifications')
-    parser_list_quant.add_argument('--obj', required=True, help='Object name')
+    parser_list_quant = subparsers.add_parser("list_quant", help="List quantifications")
+    parser_list_quant.add_argument("--obj", required=True, help="Object name")
     parser_list_quant.set_defaults(func=list_quantifications)
 
-    parser_plot = subparsers.add_parser('plot_gene_abundances', help='Plot gene abundances')
-    parser_plot.add_argument('--gene', required=True, help='Gene name')
-    parser_plot.add_argument('--named', required=False, action='store_true', help='Gene name is provided')
-    parser_plot.add_argument('--obj', required=True, help='Object name')
-    parser_plot.add_argument('--quantification_name', required=True, help='Quantification name')
-    parser_plot.add_argument('--output', required=True, help='Output file path')
+    parser_plot = subparsers.add_parser(
+        "plot_gene_abundances", help="Plot gene abundances"
+    )
+    parser_plot.add_argument("--gene", required=True, help="Gene name")
+    parser_plot.add_argument(
+        "--named", required=False, action="store_true", help="Gene name is provided"
+    )
+    parser_plot.add_argument("--obj", required=True, help="Object name")
+    parser_plot.add_argument(
+        "--quantification_name", required=True, help="Quantification name"
+    )
+    parser_plot.add_argument("--output", required=True, help="Output file path")
     parser_plot.set_defaults(func=plot_gene_abundances)
 
-    parser_corr = subparsers.add_parser('generate_correlation_matrix', help='Generate correlation matrix')
-    parser_corr.add_argument('--genes', required=True, help='newline separated list of genes')
-    parser_corr.add_argument('--obj', required=True, help='Object name')
-    parser_corr.add_argument('--quantification_name', required=True, help='Quantification name')
-    parser_corr.add_argument('--output_dir', required=True, help='Output directory')
+    parser_corr = subparsers.add_parser(
+        "generate_correlation_matrix", help="Generate correlation matrix"
+    )
+    parser_corr.add_argument(
+        "--genes", required=True, help="newline separated list of genes"
+    )
+    parser_corr.add_argument("--obj", required=True, help="Object name")
+    parser_corr.add_argument(
+        "--quantification_name", required=True, help="Quantification name"
+    )
+    parser_corr.add_argument("--output_dir", required=True, help="Output directory")
     parser_corr.set_defaults(func=generate_correlation_matrix)
 
-    parser_name2id = subparsers.add_parser('name2id', help='Convert gene name to gene ID')
-    parser_name2id.add_argument('--gene_name', required=True, help='Gene name')
-    parser_name2id.add_argument('--obj', required=True, help='Object name')
-    
+    parser_name2id = subparsers.add_parser(
+        "name2id", help="Convert gene name to gene ID"
+    )
+    parser_name2id.add_argument("--gene_name", required=True, help="Gene name")
+    parser_name2id.add_argument("--obj", required=True, help="Object name")
+
     parser_name2id.set_defaults(func=name2id)
 
-    parser_gene2fasta = subparsers.add_parser('gene2fasta', help='Extract gene sequence to FASTA')
-    parser_gene2fasta.add_argument('--gene', required=True, help='Gene name or ID')
-    parser_gene2fasta.add_argument('--obj', required=True, help='Object name')
-    parser_gene2fasta.add_argument('--output_dir', required=True, help='Output directory')
-    parser_gene2fasta.add_argument('--named', required=False, action='store_true', help='Gene name is provided')
+    parser_gene2fasta = subparsers.add_parser(
+        "gene2fasta", help="Extract gene sequence to FASTA"
+    )
+    parser_gene2fasta.add_argument("--gene", required=True, help="Gene name or ID")
+    parser_gene2fasta.add_argument("--obj", required=True, help="Object name")
+    parser_gene2fasta.add_argument(
+        "--output_dir", required=True, help="Output directory"
+    )
+    parser_gene2fasta.add_argument(
+        "--named", required=False, action="store_true", help="Gene name is provided"
+    )
 
     parser_gene2fasta.set_defaults(func=gene2fasta)
 
-    parser_list_objs = subparsers.add_parser('list_objs', help='List objects')
+    parser_list_objs = subparsers.add_parser("list_objs", help="List objects")
     parser_list_objs.set_defaults(func=list_objs)
 
-
-    parser_deseq = subparsers.add_parser('deseq_analyse', help='Perform DESeq2 analysis')
-    parser_deseq.add_argument('--obj', required=True, help='Object name')
-    parser_deseq.add_argument('--quantification_name', required=True, help='Quantification name')
-    parser_deseq.add_argument('--srp', required=True, help='Comma-separated SRA accession codes')
-    parser_deseq.add_argument('--paired', required=False, action='store_true', help='Paired-end reads')
-    parser_deseq.add_argument('--output_dir', required=True, help='Output directory')
+    parser_deseq = subparsers.add_parser(
+        "deseq_analyse", help="Perform DESeq2 analysis"
+    )
+    parser_deseq.add_argument("--obj", required=True, help="Object name")
+    parser_deseq.add_argument(
+        "--quantification_name", required=True, help="Quantification name"
+    )
+    parser_deseq.add_argument(
+        "--srp", required=True, help="Comma-separated SRA accession codes"
+    )
+    parser_deseq.add_argument(
+        "--paired", required=False, action="store_true", help="Paired-end reads"
+    )
+    parser_deseq.add_argument("--output_dir", required=True, help="Output directory")
 
     parser_deseq.set_defaults(func=quant_deseq)
 
-    parser_remove = subparsers.add_parser('remove', help='Remove object')
-    parser_remove.add_argument('--obj', required=True, help='Object name')
+    parser_remove = subparsers.add_parser("remove", help="Remove object")
+    parser_remove.add_argument("--obj", required=True, help="Object name")
     parser_remove.set_defaults(func=remove_object)
-
 
     args = parser.parse_args()
     print(f"[DEBUG] Parsed arguments: {args}")
 
-    if hasattr(args, 'func'):
+    if hasattr(args, "func"):
         print(f"[DEBUG] Executing command: {args.command}")
         args.func(args)
     else:
         print("[DEBUG] No command provided. Displaying help.")
         parser.print_help()
+
 
 if __name__ == "__main__":
     main()
