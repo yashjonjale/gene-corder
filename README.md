@@ -91,13 +91,13 @@ The **GENECorder** is an open-source, easy-to-use tool designed to help research
 The general usage pattern for GENECorder is:
 
 ```bash
-python main.py <command> [options]
+genecorder <command> [options]
 ```
 
 To see the help message and list of available commands:
 
 ```bash
-python main.py --help
+genecorder --help
 ```
 
 
@@ -112,7 +112,7 @@ python main.py --help
 **Usage:**
 
 ```bash
-python main.py instantiate --organism <organism_name> --name <object_name> [--desc <description>] [--transcriptome_path <transcriptome.fasta>] --genome_path <genome.fasta> --gtf_path <annotation.gtf>
+genecorder instantiate --organism <organism_name> --name <object_name> [--desc <description>] [--transcriptome_path <transcriptome.fasta>] --genome_path <genome.fasta> --gtf_path <annotation.gtf>
 ```
 
 **Arguments:**
@@ -127,7 +127,7 @@ python main.py instantiate --organism <organism_name> --name <object_name> [--de
 **Example:**
 
 ```bash
-python main.py instantiate --organism "Homo sapiens" --name human_obj --genome_path /path/to/human_genome.fa --gtf_path /path/to/human_annotation.gtf
+genecorder instantiate --organism "Homo sapiens" --name human_obj --genome_path /path/to/human_genome.fa --gtf_path /path/to/human_annotation.gtf
 ```
 
 ---
@@ -139,7 +139,7 @@ python main.py instantiate --organism "Homo sapiens" --name human_obj --genome_p
 **Usage:**
 
 ```bash
-python main.py quantize --sra <sra_accession_codes> --name <quantification_name> --obj <object_name> [--paired]
+genecorder quantize --sra <sra_accession_codes> --name <quantification_name> --obj <object_name> [--paired]
 ```
 
 **Arguments:**
@@ -152,7 +152,7 @@ python main.py quantize --sra <sra_accession_codes> --name <quantification_name>
 **Example:**
 
 ```bash
-python main.py quantize --sra SRR1234567,SRR1234568 --name quant1 --obj human_obj --paired
+genecorder quantize --sra SRR1234567,SRR1234568 --name quant1 --obj human_obj --paired
 ```
 
 ---
@@ -164,7 +164,7 @@ python main.py quantize --sra SRR1234567,SRR1234568 --name quant1 --obj human_ob
 **Usage:**
 
 ```bash
-python main.py list_quant --obj <object_name>
+genecorder list_quant --obj <object_name>
 ```
 
 **Arguments:**
@@ -174,7 +174,7 @@ python main.py list_quant --obj <object_name>
 **Example:**
 
 ```bash
-python main.py list_quant --obj human_obj
+genecorder list_quant --obj human_obj
 ```
 
 ---
@@ -186,7 +186,7 @@ python main.py list_quant --obj human_obj
 **Usage:**
 
 ```bash
-python main.py plot_gene_abundances --gene <gene_name_or_id> [--named] --obj <object_name> --quantification_name <quantification_name> --output <output_file>
+genecorder plot_gene_abundances --gene <gene_name_or_id> [--named] --obj <object_name> --quantification_name <quantification_name> --output <output_file>
 ```
 
 **Arguments:**
@@ -202,13 +202,13 @@ python main.py plot_gene_abundances --gene <gene_name_or_id> [--named] --obj <ob
 Plotting by gene name:
 
 ```bash
-python main.py plot_gene_abundances --gene BRCA1 --named --obj human_obj --quantification_name quant1 --output brca1_abundance.png
+genecorder plot_gene_abundances --gene BRCA1 --named --obj human_obj --quantification_name quant1 --output brca1_abundance.png
 ```
 
 Plotting by gene ID:
 
 ```bash
-python main.py plot_gene_abundances --gene ENSG00000012048 --obj human_obj --quantification_name quant1 --output brca1_abundance.png
+genecorder plot_gene_abundances --gene ENSG00000012048 --obj human_obj --quantification_name quant1 --output brca1_abundance.png
 ```
 
 ---
@@ -220,7 +220,7 @@ python main.py plot_gene_abundances --gene ENSG00000012048 --obj human_obj --qua
 **Usage:**
 
 ```bash
-python main.py generate_correlation_matrix --genes <gene_list_file> --obj <object_name> --quantification_name <quantification_name> --output_dir <output_directory>
+genecorder generate_correlation_matrix --genes <gene_list_file> --obj <object_name> --quantification_name <quantification_name> --output_dir <output_directory>
 ```
 
 **Arguments:**
@@ -233,7 +233,7 @@ python main.py generate_correlation_matrix --genes <gene_list_file> --obj <objec
 **Example:**
 
 ```bash
-python main.py generate_correlation_matrix --genes genes.txt --obj human_obj --quantification_name quant1 --output_dir ./correlation_results/
+genecorder generate_correlation_matrix --genes genes.txt --obj human_obj --quantification_name quant1 --output_dir ./correlation_results/
 ```
 
 ---
@@ -245,7 +245,7 @@ python main.py generate_correlation_matrix --genes genes.txt --obj human_obj --q
 **Usage:**
 
 ```bash
-python main.py name2id --gene_name <gene_name> --obj <object_name>
+genecorder name2id --gene_name <gene_name> --obj <object_name>
 ```
 
 **Arguments:**
@@ -256,7 +256,7 @@ python main.py name2id --gene_name <gene_name> --obj <object_name>
 **Example:**
 
 ```bash
-python main.py name2id --gene_name BRCA1 --obj human_obj
+genecorder name2id --gene_name BRCA1 --obj human_obj
 ```
 
 ---
@@ -268,7 +268,7 @@ python main.py name2id --gene_name BRCA1 --obj human_obj
 **Usage:**
 
 ```bash
-python main.py gene2fasta --gene <gene_name_or_id> --obj <object_name> --output_dir <output_directory> [--named]
+genecorder gene2fasta --gene <gene_name_or_id> --obj <object_name> --output_dir <output_directory> [--named]
 ```
 
 **Arguments:**
@@ -283,13 +283,13 @@ python main.py gene2fasta --gene <gene_name_or_id> --obj <object_name> --output_
 Extracting by gene name:
 
 ```bash
-python main.py gene2fasta --gene BRCA1 --named --obj human_obj --output_dir ./gene_sequences/
+genecorder gene2fasta --gene BRCA1 --named --obj human_obj --output_dir ./gene_sequences/
 ```
 
 Extracting by gene ID:
 
 ```bash
-python main.py gene2fasta --gene ENSG00000012048 --obj human_obj --output_dir ./gene_sequences/
+genecorder gene2fasta --gene ENSG00000012048 --obj human_obj --output_dir ./gene_sequences/
 ```
 
 ---
@@ -301,13 +301,13 @@ python main.py gene2fasta --gene ENSG00000012048 --obj human_obj --output_dir ./
 **Usage:**
 
 ```bash
-python main.py list_objs
+genecorder list_objs
 ```
 
 **Example:**
 
 ```bash
-python main.py list_objs
+genecorder list_objs
 ```
 
 ---
@@ -319,7 +319,7 @@ python main.py list_objs
 **Usage:**
 
 ```bash
-python main.py deseq_analyse --obj <object_name> --quantification_name <analysis_name> --srp <sra_project_code> [--paired] --output_dir <output_directory>
+genecorder deseq_analyse --obj <object_name> --quantification_name <analysis_name> --srp <sra_project_code> [--paired] --output_dir <output_directory>
 ```
 
 **Arguments:**
@@ -333,7 +333,7 @@ python main.py deseq_analyse --obj <object_name> --quantification_name <analysis
 **Example:**
 
 ```bash
-python main.py deseq_analyse --obj human_obj --quantification_name de_analysis1 --srp SRP123456 --paired --output_dir ./deseq_results/
+genecorder deseq_analyse --obj human_obj --quantification_name de_analysis1 --srp SRP123456 --paired --output_dir ./deseq_results/
 ```
 
 ---
@@ -345,7 +345,7 @@ python main.py deseq_analyse --obj human_obj --quantification_name de_analysis1 
 **Usage:**
 
 ```bash
-python main.py remove --obj <object_name>
+genecorder remove --obj <object_name>
 ```
 
 **Arguments:**
@@ -355,7 +355,7 @@ python main.py remove --obj <object_name>
 **Example:**
 
 ```bash
-python main.py remove --obj human_obj
+genecorder remove --obj human_obj
 ```
 
 ---
