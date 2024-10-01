@@ -1,4 +1,8 @@
 # Byte-compiled / optimized / DLL files
+*.gtf
+*.fa
+*.gz
+*.pdf
 __pycache__/
 *.py[cod]
 *$py.class
