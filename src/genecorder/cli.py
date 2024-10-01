@@ -106,9 +106,7 @@ def parse_args(args=None):
     parser_plot.add_argument("--output", required=True, help="Output file path")
     parser_plot.set_defaults(func=plot_gene_abundances)
 
-    parser_corr = subparsers.add_parser(
-        "corr", help="Generate correlation matrix"
-    )
+    parser_corr = subparsers.add_parser("corr", help="Generate correlation matrix")
     parser_corr.add_argument(
         "--genes", required=True, help="newline separated list of genes"
     )
@@ -144,9 +142,7 @@ def parse_args(args=None):
     parser_list_objs = subparsers.add_parser("listobjs", help="List objects")
     parser_list_objs.set_defaults(func=list_objs)
 
-    parser_deseq = subparsers.add_parser(
-        "deseq", help="Perform DESeq2 analysis"
-    )
+    parser_deseq = subparsers.add_parser("deseq", help="Perform DESeq2 analysis")
     parser_deseq.add_argument("--obj", required=True, help="Object name")
     parser_deseq.add_argument(
         "--quantification_name", required=True, help="Quantification name"
