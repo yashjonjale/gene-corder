@@ -44,6 +44,8 @@ package-dir = {"" = "src"}
 [tool.setuptools.package-data]
 "*" = ["*.*"]
 
+[tool.distutils.bdist_wheel]
+universal = true
 
 
 
