@@ -1,5 +1,4 @@
 #!/bin/bash
-set -eox pipefail
 wget -c "https://raw.githubusercontent.com/yashjonjale/gene-corder/refs/heads/main/env.yml"
 eval "$(conda shell.bash hook)"
 conda deactivate
