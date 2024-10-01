@@ -1603,6 +1603,7 @@ def quant_deseq(args):
         plt.tight_layout()
         # plt.show()
         print(f"Saving PCA plot to {output_dir}")
+        output_dir = os.path.abspath(output_dir)
         plt.savefig(os.path.join(output_dir, "pca_vst.png"))
     except FileNotFoundError as e:
         print(f"Error: Output directory not found: {e}")
