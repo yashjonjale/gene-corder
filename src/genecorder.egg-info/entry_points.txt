@@ -1,0 +1,2 @@
+[console_scripts]
+genecorder = genecorder.cli:parse_args
