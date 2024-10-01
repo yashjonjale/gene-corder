@@ -1762,7 +1762,7 @@ def remove_object(args):
     print(f"Object '{obj_name}' removed from config.")
 
 
-def run_genecorder():
+def main():
 
     # Check if config file exists
     if not os.path.exists("config.json"):
@@ -1906,4 +1906,4 @@ def run_genecorder():
 
 
 if __name__ == "__main__":
-    run_genecorder()
+    main()

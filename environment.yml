@@ -1,20 +1,26 @@
-name: gene-corder
+name: gc
 channels:
-  - bioconda
   - conda-forge
+  - bioconda
   - defaults
 dependencies:
   - _libgcc_mutex=0.1=conda_forge
   - _openmp_mutex=4.5=2_gnu
   - argcomplete=3.5.0=pyhd8ed1ab_0
   - argh=0.31.3=pyhd8ed1ab_0
+  - asttokens=2.4.1=pyhd8ed1ab_0
   - bamtools=2.5.2=hdcf5f25_5
   - bedtools=2.31.1=hf5e1c6e_2
   - biopython=1.84=py39hd3abc70_0
   - bzip2=1.0.8=h4bc722e_7
   - c-ares=1.33.1=heb4867d_0
   - ca-certificates=2024.8.30=hbcca054_0
+  - comm=0.2.2=pyhd8ed1ab_0
   - curl=8.10.1=hbbe4b11_0
+  - debugpy=1.8.6=py39hf88036b_0
+  - decorator=5.1.1=pyhd8ed1ab_0
+  - exceptiongroup=1.2.2=pyhd8ed1ab_0
+  - executing=2.1.0=pyhd8ed1ab_0
   - gffread=0.9.12=0
   - gffutils=0.13=pyh7cba7a3_0
   - hdf5=1.14.3=nompi_hdf9ad27_105
@@ -22,6 +28,11 @@ dependencies:
   - icu=70.1=h27087fc_0
   - importlib-metadata=8.5.0=pyha770c72_0
   - interlap=0.2.7=pyh9f0ad1d_0
+  - ipykernel=6.29.5=pyh3099207_0
+  - ipython=8.18.1=pyh707e725_3
+  - jedi=0.19.1=pyhd8ed1ab_0
+  - jupyter_client=8.6.3=pyhd8ed1ab_0
+  - jupyter_core=5.7.2=pyh31011fe_1
   - kallisto=0.51.1=heb0cbe2_0
   - keyutils=1.6.1=h166bdaf_0
   - krb5=1.21.3=h659f571_0
@@ -45,6 +56,7 @@ dependencies:
   - libnghttp2=1.58.0=h47da74e_1
   - libnsl=2.0.1=hd590300_0
   - libopenblas=0.3.27=pthreads_hac2b453_1
+  - libsodium=1.0.20=h4ab18f5_0
   - libsqlite=3.46.1=hadc24fc_0
   - libssh2=1.11.0=h0841786_0
   - libstdcxx=14.1.0=hc0a3c3a_1
@@ -54,14 +66,17 @@ dependencies:
   - libxml2=2.9.14=h22db469_4
   - libzlib=1.3.1=h4ab18f5_1
   - liftoff=1.6.3=pyhdfd78af_0
+  - matplotlib-inline=0.1.7=pyhd8ed1ab_0
   - minimap2=2.1.1=0
   - ncbi-vdb=3.1.1=h4ac6f70_2
   - ncurses=6.5=he02047a_1
+  - nest-asyncio=1.6.0=pyhd8ed1ab_0
   - networkx=3.2.1=pyhd8ed1ab_0
   - openssl=3.3.2=hb9d3cd8_0
   - ossuuid=1.6.2=hf484d3e_1000
   - packaging=24.1=pyhd8ed1ab_0
   - parasail-python=1.3.4=py39heaaa4ec_2
+  - parso=0.8.4=pyhd8ed1ab_0
   - perl=5.26.2=h36c2ea0_1008
   - perl-app-cpanminus=1.7044=pl526_1
   - perl-business-isbn=3.004=pl526_0
@@ -82,23 +97,38 @@ dependencies:
   - perl-xml-sax=1.02=pl526_0
   - perl-xml-sax-base=1.09=pl526_0
   - perl-xsloader=0.24=pl526_0
+  - pexpect=4.9.0=pyhd8ed1ab_0
+  - pickleshare=0.7.5=py_1003
   - pip=24.2=pyh8b19718_1
+  - platformdirs=4.3.6=pyhd8ed1ab_0
+  - prompt-toolkit=3.0.48=pyha770c72_0
+  - psutil=6.0.0=py39h8cd3c5a_1
+  - ptyprocess=0.7.0=pyhd3deb0d_0
+  - pure_eval=0.2.3=pyhd8ed1ab_0
   - pyfaidx=0.8.1.2=pyhdfd78af_0
+  - pygments=2.18.0=pyhd8ed1ab_0
   - pysam=0.22.1=py39h61809e1_2
   - python=3.9.20=h13acc7a_0_cpython
   - python_abi=3.9=5_cp39
   - pyvcf3=1.0.3=pyhdfd78af_0
+  - pyzmq=26.2.0=py39h4e4fb57_2
   - readline=8.2=h8228510_1
   - samtools=1.21=h50ea8bc_0
   - setuptools=75.1.0=pyhd8ed1ab_0
   - simplejson=3.19.3=py39h8cd3c5a_1
   - six=1.16.0=pyh6c4a22f_0
   - sra-tools=3.1.1=h4304569_2
+  - stack_data=0.6.2=pyhd8ed1ab_0
   - tk=8.6.13=noxft_h4845f30_101
+  - tornado=6.4.1=py39h8cd3c5a_1
+  - traitlets=5.14.3=pyhd8ed1ab_0
+  - typing_extensions=4.12.2=pyha770c72_0
   - tzdata=2024a=h8827d51_1
   - ujson=5.10.0=py39hf88036b_1
+  - wcwidth=0.2.13=pyhd8ed1ab_0
   - wheel=0.44.0=pyhd8ed1ab_0
   - xz=5.2.6=h166bdaf_0
+  - zeromq=4.3.5=ha4adb4c_5
   - zipp=3.20.2=pyhd8ed1ab_0
   - zlib=1.3.1=h4ab18f5_1
   - zstd=1.5.6=ha6fb4c9_0
@@ -117,12 +147,12 @@ dependencies:
       - cycler==0.12.1
       - dask==2024.8.0
       - defusedxml==0.7.1
-      - exceptiongroup==1.2.2
       - fastjsonschema==2.20.0
       - flox==0.9.10
       - fonttools==4.54.1
       - fsspec==2024.9.0
       - future==1.0.0
+      - gene-corder==0.1.0
       - get-annotations==0.1.2
       - h5py==3.12.1
       - idna==3.10
@@ -131,8 +161,6 @@ dependencies:
       - joblib==1.4.2
       - jsonschema==4.23.0
       - jsonschema-specifications==2023.12.1
-      - jupyter-client==8.6.3
-      - jupyter-core==5.7.2
       - jupyterlab-pygments==0.3.0
       - kb-python==0.28.2
       - kiwisolver==1.4.7
@@ -140,6 +168,7 @@ dependencies:
       - llvmlite==0.43.0
       - locket==1.0.0
       - loompy==3.0.7
+      - lxml==5.3.0
       - markupsafe==2.1.5
       - matplotlib==3.9.2
       - mistune==3.0.2
@@ -147,6 +176,7 @@ dependencies:
       - nbclient==0.10.0
       - nbconvert==7.16.4
       - nbformat==5.10.4
+      - ncls==0.0.68
       - ngs-tools==1.8.5
       - numba==0.60.0
       - numpy==1.23.0
@@ -156,21 +186,22 @@ dependencies:
       - partd==1.4.2
       - patsy==0.5.6
       - pillow==10.4.0
-      - platformdirs==4.3.6
+      - pipx==1.7.1
       - plotly==5.24.1
       - pybiomart==0.2.0
       - pydeseq2==0.4.11
-      - pygments==2.18.0
       - pynndescent==0.5.13
       - pyparsing==3.1.4
+      - pyranges==0.1.2
+      - pysradb==2.2.1
       - python-dateutil==2.9.0.post0
       - pytximport==0.8.0
       - pytz==2024.2
       - pyyaml==6.0.2
-      - pyzmq==26.2.0
       - referencing==0.35.1
       - requests==2.32.3
       - requests-cache==1.2.1
+      - requests-ftp==0.3.1
       - rpds-py==0.20.0
       - scanpy==1.10.3
       - scikit-learn==1.5.2
@@ -178,20 +209,22 @@ dependencies:
       - seaborn==0.13.2
       - session-info==1.0.0
       - shortuuid==1.0.13
+      - sorted-nearest==0.0.39
       - soupsieve==2.6
       - statsmodels==0.14.3
       - stdlib-list==0.10.0
+      - tabulate==0.9.0
       - tenacity==9.0.0
       - threadpoolctl==3.5.0
       - tinycss2==1.3.0
+      - tomli==2.0.1
       - toolz==0.12.1
-      - tornado==6.4.1
       - tqdm==4.66.5
-      - traitlets==5.14.3
-      - typing-extensions==4.12.2
       - umap-learn==0.5.6
       - url-normalize==1.4.3
       - urllib3==2.2.3
+      - userpath==1.9.2
       - webencodings==0.5.1
       - xarray==2024.3.0
+      - xmltodict==0.13.0
 prefix: /home/yashjonjale/anaconda3/envs/gc

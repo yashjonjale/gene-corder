@@ -37,7 +37,6 @@ def create_config():
 
 
 def parse_args(args=None):
-    print("DSADASDA")
     parser = ArgParser(
         description="genecorder (v{})".format(__version__),
         formatter_class=CustomFormatterArgP,
@@ -88,13 +87,94 @@ def parse_args(args=None):
     parser_quantize.add_argument(
         "--paired", required=False, action="store_true", help="Paired-end reads"
     )
-    args = parser.parse_args(args=None if sys.argv[1:] else ["--help"])
+    parser_quantize.set_defaults(func=quantize)
 
-    if args.command == "instantiate":
-        instantiate(args)
-    elif args.command == "quantize":
-        quantize(args)
+    # Uncomment and implement additional subparsers as needed
+    parser_list_quant = subparsers.add_parser("listquants", help="List quantifications")
+    parser_list_quant.add_argument("--obj", required=True, help="Object name")
+    parser_list_quant.set_defaults(func=list_quantifications)
 
+    parser_plot = subparsers.add_parser("plotga", help="Plot gene abundances")
+    parser_plot.add_argument("--gene", required=True, help="Gene name")
+    parser_plot.add_argument(
+        "--named", required=False, action="store_true", help="Gene name is provided"
+    )
+    parser_plot.add_argument("--obj", required=True, help="Object name")
+    parser_plot.add_argument(
+        "--quantification_name", required=True, help="Quantification name"
+    )
+    parser_plot.add_argument("--output", required=True, help="Output file path")
+    parser_plot.set_defaults(func=plot_gene_abundances)
+
+    parser_corr = subparsers.add_parser(
+        "corr", help="Generate correlation matrix"
+    )
+    parser_corr.add_argument(
+        "--genes", required=True, help="newline separated list of genes"
+    )
+    parser_corr.add_argument("--obj", required=True, help="Object name")
+    parser_corr.add_argument(
+        "--quantification_name", required=True, help="Quantification name"
+    )
+    parser_corr.add_argument("--output_dir", required=True, help="Output directory")
+    parser_corr.set_defaults(func=generate_correlation_matrix)
+
+    parser_name2id = subparsers.add_parser(
+        "name2id", help="Convert gene name to gene ID"
+    )
+    parser_name2id.add_argument("--gene_name", required=True, help="Gene name")
+    parser_name2id.add_argument("--obj", required=True, help="Object name")
+
+    parser_name2id.set_defaults(func=name2id)
+
+    parser_gene2fasta = subparsers.add_parser(
+        "gene2fasta", help="Extract gene sequence to FASTA"
+    )
+    parser_gene2fasta.add_argument("--gene", required=True, help="Gene name or ID")
+    parser_gene2fasta.add_argument("--obj", required=True, help="Object name")
+    parser_gene2fasta.add_argument(
+        "--output_dir", required=True, help="Output directory"
+    )
+    parser_gene2fasta.add_argument(
+        "--named", required=False, action="store_true", help="Gene name is provided"
+    )
+
+    parser_gene2fasta.set_defaults(func=gene2fasta)
+
+    parser_list_objs = subparsers.add_parser("listobjs", help="List objects")
+    parser_list_objs.set_defaults(func=list_objs)
+
+    parser_deseq = subparsers.add_parser(
+        "deseq", help="Perform DESeq2 analysis"
+    )
+    parser_deseq.add_argument("--obj", required=True, help="Object name")
+    parser_deseq.add_argument(
+        "--quantification_name", required=True, help="Quantification name"
+    )
+    parser_deseq.add_argument(
+        "--srp", required=True, help="Comma-separated SRA accession codes"
+    )
+    parser_deseq.add_argument(
+        "--paired", required=False, action="store_true", help="Paired-end reads"
+    )
+    parser_deseq.add_argument("--output_dir", required=True, help="Output directory")
+
+    parser_deseq.set_defaults(func=quant_deseq)
+
+    parser_remove = subparsers.add_parser("remove", help="Remove object")
+    parser_remove.add_argument("--obj", required=True, help="Object name")
+    parser_remove.set_defaults(func=remove_object)
+
+    args = parser.parse_args()
+    print(f"[DEBUG] Parsed arguments: {args}")
+
+    if hasattr(args, "func"):
+        print(f"[DEBUG] Executing command: {args.command}")
+        create_config()
+        args.func(args)
+    else:
+        print("[DEBUG] No command provided. Displaying help.")
+        parser.print_help()
 
 
 if __name__ == "__main__":
