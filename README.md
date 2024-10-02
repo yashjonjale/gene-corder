@@ -36,7 +36,9 @@
 
 ## Overview
 
-The **GENECorder** is an open-source, easy-to-use tool designed to help researchers analyze RNA sequencing (RNA-seq) datasets, regardless of their programming or bioinformatics expertise. Built to support bulk RNA-seq data from organisms listed on Ensembl, the tool simplifies data processing, quantifies gene expression, and produces an easily interpretable output file (`gene_counts.csv`) for downstream analysis. It integrates multiple bioinformatics tools behind the scenes, offering a smooth and automated workflow.
+The **GENECorder** is an open-source, easy-to-use tool designed to help researchers analyze RNA sequencing (RNA-seq) datasets, regardless of their programming or bioinformatics expertise. With the mantra that Built to support bulk RNA-seq data from organisms listed on Ensembl, the tool simplifies data processing, quantifies gene expression, and produces an easily interpretable output file (`gene_counts.csv`) for downstream analysis. It integrates multiple bioinformatics tools behind the scenes, offering a smooth and automated workflow.
+
+
 
 ---
 
@@ -88,8 +90,14 @@ The **GENECorder** is an open-source, easy-to-use tool designed to help research
 
 3. **Run the `install.sh` script**:
 
+   For Linux (only Debian based)
    ```bash
    bash install.sh
+   ```
+
+   For MacOS
+   ```zsh
+   zsh install.sh
    ```
 
    This command will install all the necessary dependencies, set up the environment, and install the tool.
@@ -131,8 +139,8 @@ genecorder instantiate --organism <organism_name> --name <object_name> [--desc <
 - `--name`: **(Required)** A unique name for this object (used in future commands).
 - `--desc`: **(Optional)** Description for this object.
 - `--transcriptome_path`: **(Optional)** Path to transcriptome FASTA file. If not provided, it will be generated from the genome and GTF files.
-- `--genome_path`: **(Required)** Path to genome FASTA file.
-- `--gtf_path`: **(Required)** Path to annotation GTF/GFF file.
+- `--genome_path`: **(Required)** Path to genome FASTA file. Preferrably from Ensembl.
+- `--gtf_path`: **(Required)** Path to annotation GTF/GFF file. Preferrably from Ensembl.
 
 **Example:**
 
