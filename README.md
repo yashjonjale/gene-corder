@@ -1,5 +1,12 @@
 # GENECorder
 
+![GENECorder Logo]("./src/genecorder/images/logo.jpg")
+
+## Workflow Diagram
+
+![GENECorder Workflow]("./src/genecorder/images/workflow.jpg")
+
+
 ## Table of Contents
 
 - [Overview](#overview)
@@ -9,25 +16,33 @@
 - [Installation](#installation)
 - [Usage](#usage)
 - [Commands and Getting Started](#commands-and-getting-started)
-- [Examples](#example-workflows)
-- [Additional Note](#additional-notes)
+  - [1. `instantiate`](#1-instantiate)
+  - [2. `quantize`](#2-quantize)
+  - [3. `listquants`](#3-listquants)
+  - [4. `plotga`](#4-plotga)
+  - [5. `corr`](#5-corr)
+  - [6. `name2id`](#6-name2id)
+  - [7. `gene2fasta`](#7-gene2fasta)
+  - [8. `listobjs`](#8-listobjs)
+  - [9. `deseq`](#9-deseq)
+  - [10. `remove`](#10-remove)
+- [Example Workflow](#example-workflow)
+- [Additional Notes](#additional-notes)
 - [Troubleshooting](#troubleshooting)
 - [Support and Contributions](#support-and-contributions)
 - [License](#license)
 
 ---
 
-
 ## Overview
 
 The **GENECorder** is an open-source, easy-to-use tool designed to help researchers analyze RNA sequencing (RNA-seq) datasets, regardless of their programming or bioinformatics expertise. Built to support bulk RNA-seq data from organisms listed on Ensembl, the tool simplifies data processing, quantifies gene expression, and produces an easily interpretable output file (`gene_counts.csv`) for downstream analysis. It integrates multiple bioinformatics tools behind the scenes, offering a smooth and automated workflow.
-
 
 ---
 
 ## Key Features
 
-- **Easy Integration with Public Data**: Automatically fetches genomic and transcriptomic data from the Ensembl database, supporting a wide range of organisms.
+- **Easy Integration with Public Data**: Automatically fetches transcriptomic SRA datasets from the NCBI SRA database, supporting single-ended and paired-ended bulk RNASeq SRA data.
 - **Built on Proven Bioinformatics Tools**: Incorporates trusted bioinformatics software like `kallisto`, `kb-python`, and `pytximport` for high-quality results.
 - **User-Friendly Command-Line Interface**: Simple commands provided for easy interaction without requiring programming knowledge.
 - **Cross-Database Compatibility**: Can map gene indices from multiple databases, enabling analysis with custom genomes and annotations.
@@ -37,19 +52,15 @@ The **GENECorder** is an open-source, easy-to-use tool designed to help research
 
 ## Integrated Software Tools
 
-| Tool            | Functionality                                        | Purpose in RNASeq Data Analyser                   |
-|-----------------|------------------------------------------------------|---------------------------------------------------|
-| **Kallisto**    | RNA-seq transcript quantification                    | Processes RNA-seq reads into transcript abundances |
-| **kb-python**   | RNA-seq preprocessing, including handling FASTQ files | Fetches, prepares, and processes RNA-seq data     |
-| **Samtools**    | Manipulation of alignment data (SAM/BAM files)        | Manages sequence alignments and data formats      |
-| **Bamtools**    | Utilities for BAM file manipulation                   | Manages BAM files, used for storing aligned sequences |
-| **Bedtools**    | Operates on genomic intervals (BED files)             | Processes and intersects data with genome annotations |
-| **Gffread**     | GTF/GFF3 file processing                             | Extracts and converts gene annotations            |
-| **Biopython**   | Biological computation and sequence manipulation     | Provides utilities for biological data processing |
-| **Pydeseq2**    | Differential expression analysis using DESeq2        | Calculates gene expression differences            |
-| **PyTximport**    | Converts transcript abundances to gene-level counts  | Handles conversion of quantified transcripts      |
-| **PyRanges**    | ***  | ***      |
-
+| Tool            | Functionality                                        | Purpose in GENECorder                             | References                                             |
+|-----------------|------------------------------------------------------|---------------------------------------------------|-------------------------------------------------------|
+| **Kallisto**    | RNA-seq transcript quantification                    | Processes RNA-seq reads into transcript abundances | [Kallisto GitHub](https://github.com/pachterlab/kallisto) |
+| **kb-python**   | RNA-seq preprocessing, including handling FASTQ files | Fetches, prepares, and processes RNA-seq data     | [kb-python GitHub](https://github.com/pachterlab/kb_python) |
+| **Gffread**     | GTF/GFF3 file processing                             | Extracts and converts gene annotations            | [Gffread GitHub](https://github.com/gpertea/gffread) |
+| **Biopython**   | Biological computation and sequence manipulation     | Provides utilities for biological data processing | [Biopython](https://biopython.org) |
+| **Pydeseq2**    | Differential expression analysis using DESeq2        | Calculates gene expression differences            | [Pydeseq2 GitHub](https://github.com/owkin/PyDESeq2) |
+| **PyTximport**  | Converts transcript abundances to gene-level counts  | Handles conversion of quantified transcripts      | [PyTximport Docs](https://pytximport.readthedocs.io/en/latest/start.html) |
+| **PyRanges**    | Efficient operations on genomic intervals            | Handles genomic range operations efficiently      | [PyRanges GitHub](https://github.com/biocore-ntnu/pyranges) |
 
 ---
 
@@ -57,34 +68,33 @@ The **GENECorder** is an open-source, easy-to-use tool designed to help research
 
 - **Supported Platforms**: macOS and Linux.
 - **Required Dependencies**:
-  - **Anaconda**: For managing Python dependencies. Nothing else needed, we take care of the rest.
-  - **Internet Access**: Needed to prefetch SRA files from NCBI
-  - **Disk Space**: Ensure sufficient space is available for storing downloaded genome files which depends on the extent of your analyses. Guven it is bioinformatics throughput, memory requirement may sometimes be over 100 GBs
+  - **Anaconda**: For managing Python dependencies. Nothing else needed; we take care of the rest.
+  - **Internet Access**: Needed to prefetch SRA files from NCBI.
+  - **Disk Space**: Ensure sufficient space is available for storing downloaded genome files, which depends on the extent of your analyses. Given it is bioinformatics throughput, memory requirements may sometimes be over 100 GBs.
 
 ---
 
 ## Installation
 
-1. **Clone the GitHub repository**:
+1. **Download `install.sh` using `wget`**:
 
    ```bash
-   git clone <repository-url>
+   wget https://raw.githubusercontent.com/yashjonjale/gene-corder/refs/heads/main/install.sh
    ```
 
 2. **Ensure Anaconda is installed**:
 
    Download it from [here](https://www.anaconda.com/products/individual).
 
-3. **Run the `make` command**:
+3. **Run the `install.sh` script**:
 
    ```bash
-   make
+   bash install.sh
    ```
 
-   This command will install all the necessary dependencies and set up the environment automatically.
+   This command will install all the necessary dependencies, set up the environment, and install the tool.
 
 ---
-
 
 ## Usage
 
@@ -99,7 +109,7 @@ To see the help message and list of available commands:
 ```bash
 genecorder --help
 ```
-
+Ensure that you are working in same directory/folder while running commands to ensure smooth running of the tool.
 
 ---
 
@@ -157,14 +167,14 @@ genecorder quantize --sra SRR1234567,SRR1234568 --name quant1 --obj human_obj --
 
 ---
 
-### 3. `list_quant`
+### 3. `listquants`
 
 **Description:** List all quantifications associated with a specified object.
 
 **Usage:**
 
 ```bash
-genecorder list_quant --obj <object_name>
+genecorder listquants --obj <object_name>
 ```
 
 **Arguments:**
@@ -174,19 +184,19 @@ genecorder list_quant --obj <object_name>
 **Example:**
 
 ```bash
-genecorder list_quant --obj human_obj
+genecorder listquants --obj human_obj
 ```
 
 ---
 
-### 4. `plot_gene_abundances`
+### 4. `plotga`
 
 **Description:** Plot the abundances of a specified gene across samples in a quantification.
 
 **Usage:**
 
 ```bash
-genecorder plot_gene_abundances --gene <gene_name_or_id> [--named] --obj <object_name> --quantification_name <quantification_name> --output <output_file>
+genecorder plotga --gene <gene_name_or_id> [--named] --obj <object_name> --quantification_name <quantification_name> --output <output_file>
 ```
 
 **Arguments:**
@@ -202,25 +212,25 @@ genecorder plot_gene_abundances --gene <gene_name_or_id> [--named] --obj <object
 Plotting by gene name:
 
 ```bash
-genecorder plot_gene_abundances --gene BRCA1 --named --obj human_obj --quantification_name quant1 --output brca1_abundance.png
+genecorder plotga --gene BRCA1 --named --obj human_obj --quantification_name quant1 --output brca1_abundance.png
 ```
 
 Plotting by gene ID:
 
 ```bash
-genecorder plot_gene_abundances --gene ENSG00000012048 --obj human_obj --quantification_name quant1 --output brca1_abundance.png
+genecorder plotga --gene ENSG00000012048 --obj human_obj --quantification_name quant1 --output brca1_abundance.png
 ```
 
 ---
 
-### 5. `generate_correlation_matrix`
+### 5. `corr`
 
 **Description:** Generate a correlation matrix and heatmap for a list of genes based on their expression levels.
 
 **Usage:**
 
 ```bash
-genecorder generate_correlation_matrix --genes <gene_list_file> --obj <object_name> --quantification_name <quantification_name> --output_dir <output_directory>
+genecorder corr --genes <gene_list_file> --obj <object_name> --quantification_name <quantification_name> --output_dir <output_directory>
 ```
 
 **Arguments:**
@@ -233,7 +243,7 @@ genecorder generate_correlation_matrix --genes <gene_list_file> --obj <object_na
 **Example:**
 
 ```bash
-genecorder generate_correlation_matrix --genes genes.txt --obj human_obj --quantification_name quant1 --output_dir ./correlation_results/
+genecorder corr --genes genes.txt --obj human_obj --quantification_name quant1 --output_dir ./correlation_results/
 ```
 
 ---
@@ -294,46 +304,46 @@ genecorder gene2fasta --gene ENSG00000012048 --obj human_obj --output_dir ./gene
 
 ---
 
-### 8. `list_objs`
+### 8. `listobjs`
 
 **Description:** List all instantiated objects.
 
 **Usage:**
 
 ```bash
-genecorder list_objs
+genecorder listobjs
 ```
 
 **Example:**
 
 ```bash
-genecorder list_objs
+genecorder listobjs
 ```
 
 ---
 
-### 9. `deseq_analyse`
+### 9. `deseq`
 
-**Description:** Perform differential expression analysis using DESeq2 on RNA-Seq data from a specified SRA project.
+**Description:** Perform differential expression analysis using DESeq2 on RNA-Seq data from specified SRA accession codes.
 
 **Usage:**
 
 ```bash
-genecorder deseq_analyse --obj <object_name> --quantification_name <analysis_name> --srp <sra_project_code> [--paired] --output_dir <output_directory>
+genecorder deseq --obj <object_name> --quantification_name <analysis_name> --srp <sra_accession_codes> [--paired] --output_dir <output_directory>
 ```
 
 **Arguments:**
 
 - `--obj`: **(Required)** Name of the object.
 - `--quantification_name`: **(Required)** Name for this analysis.
-- `--srp`: **(Required)** SRA project accession code (e.g., `SRP123456`).
+- `--srp`: **(Required)** Comma-separated SRA accession codes (e.g., `SRR1234567,SRR1234568`).
 - `--paired`: **(Optional)** Include if reads are paired-end.
 - `--output_dir`: **(Required)** Directory to save analysis results.
 
 **Example:**
 
 ```bash
-genecorder deseq_analyse --obj human_obj --quantification_name de_analysis1 --srp SRP123456 --paired --output_dir ./deseq_results/
+genecorder deseq --obj human_obj --quantification_name de_analysis1 --srp SRR1234567,SRR1234568 --paired --output_dir ./deseq_results/
 ```
 
 ---
@@ -360,13 +370,68 @@ genecorder remove --obj human_obj
 
 ---
 
+## Example Workflow
+
+Below is an example of a typical workflow using GENECorder:
+
+1. **Instantiate an Object for an Organism:**
+
+   ```bash
+   genecorder instantiate --organism "Homo sapiens" --name human_obj --genome_path /path/to/human_genome.fa --gtf_path /path/to/human_annotation.gtf
+   ```
+
+2. **Quantify RNA-Seq Data:**
+
+   ```bash
+   genecorder quantize --sra SRR1234567,SRR1234568 --name quant1 --obj human_obj --paired
+   ```
+
+3. **List Quantifications:**
+
+   ```bash
+   genecorder listquants --obj human_obj
+   ```
+
+4. **Plot Gene Abundances:**
+
+   ```bash
+   genecorder plotga --gene BRCA1 --named --obj human_obj --quantification_name quant1 --output brca1_abundance.png
+   ```
+
+5. **Generate Correlation Matrix:**
+
+   ```bash
+   genecorder corr --genes genes.txt --obj human_obj --quantification_name quant1 --output_dir ./correlation_results/
+   ```
+
+6. **Perform Differential Expression Analysis:**
+
+   ```bash
+   genecorder deseq --obj human_obj --quantification_name de_analysis1 --srp SRR1234567,SRR1234568 --paired --output_dir ./deseq_results/
+   ```
+
+7. **Extract Gene Sequence:**
+
+   ```bash
+   genecorder gene2fasta --gene BRCA1 --named --obj human_obj --output_dir ./gene_sequences/
+   ```
+
+8. **Remove an Object:**
+
+   ```bash
+   genecorder remove --obj human_obj
+   ```
+
+---
+
 ## Additional Notes
 
-- Ensure that you have a stable internet connection when running commands that download data (e.g., `quantize`, `deseq_analyse`).
+- Ensure that you have a stable internet connection when running commands that download data (e.g., `quantize`, `deseq`).
 - All data and outputs are organized under the `data/` directory, structured by object and quantification names.
 - The tool maintains a `config.json` file to track objects and their associated data. Do not modify this file manually.
 - Use the `--paired` flag if your RNA-Seq data is from paired-end sequencing; otherwise, omit it for single-end data.
-- For the `generate_correlation_matrix` command, the gene list file should contain one gene name or ID per line.
+- For the `corr` command, the gene list file should contain one gene name or ID per line.
+- The `deseq` command accepts SRA accession codes directly via the `--srp` argument.
 
 ---
 
@@ -376,6 +441,7 @@ genecorder remove --obj human_obj
 - **File Not Found Errors:** Verify that all file paths provided are correct and accessible.
 - **Gene Not Found:** Ensure gene names or IDs are correct and present in the organism's annotation.
 - **Internet Connection:** Some commands require downloading data from NCBI SRA; ensure you have internet access.
+- **Command Not Recognized:** Double-check the command names as they might have changed (e.g., `list_quant` is now `listquants`).
 
 ---
 
