@@ -47,7 +47,6 @@ The **GENECorder** is an open-source, easy-to-use tool designed to help research
 - **Easy Integration with Public Data**: Automatically fetches transcriptomic SRA datasets from the NCBI SRA database, supporting single-ended and paired-ended bulk RNASeq SRA data.
 - **Built on Proven Bioinformatics Tools**: Incorporates trusted bioinformatics software like `kallisto`, `kb-python`, and `pytximport` for high-quality results.
 - **User-Friendly Command-Line Interface**: Simple commands provided for easy interaction without requiring programming knowledge.
-- **Cross-Database Compatibility**: Can map gene indices from multiple databases, enabling analysis with custom genomes and annotations.
 - **Visual and Statistical Insights**: Built-in functions for gene expression plots and co-expression analysis.
 
 ---
