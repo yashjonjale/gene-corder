@@ -4,7 +4,7 @@
 
 ## Workflow Diagram
 
-![GENECorder Workflow](./src/genecorder/images/workflow.jpg)
+![GENECorder Workflow](./src/genecorder/images/workflow.png)
 
 
 ## Table of Contents
