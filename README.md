@@ -1,10 +1,10 @@
 # GENECorder
 
-![GENECorder Logo]("./src/genecorder/images/logo.jpg")
+![GENECorder Logo](./src/genecorder/images/logo.jpg)
 
 ## Workflow Diagram
 
-![GENECorder Workflow]("./src/genecorder/images/workflow.jpg")
+![GENECorder Workflow](./src/genecorder/images/workflow.jpg)
 
 
 ## Table of Contents
