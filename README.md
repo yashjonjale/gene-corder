@@ -2,10 +2,6 @@
 
 ![GENECorder Logo](./src/genecorder/images/logo.jpg)
 
-## Workflow Diagram
-
-![GENECorder Workflow](./src/genecorder/images/workflow.png)
-
 
 ## Table of Contents
 
