@@ -1,5 +1,3 @@
-# GENECorder
-
 ![GENECorder Logo](./src/genecorder/images/logo.jpg)
 
 
